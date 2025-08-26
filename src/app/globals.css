@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* CSS Brutalism Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  line-height: 1.2;
+  color: #000000;
+  background-color: #ffffff;
+  text-transform: uppercase;
+}
+
+/* Brutalist Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 3px 3px 0px #000000;
+}
+
+/* Brutalist Buttons */
+.btn-brutalist {
+  background: #ff0000;
+  color: #ffffff;
+  border: 4px solid #000000;
+  font-weight: bold;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: none;
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.btn-brutalist:hover {
+  background: #ffff00;
+  color: #000000;
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #000000;
+}
+
+/* Brutalist Cards */
+.card-brutalist {
+  border: 6px solid #000000;
+  box-shadow: 8px 8px 0px #000000;
+  background: #ffffff;
+  padding: 20px;
+}
+
+/* Brutalist Input Fields */
+.input-brutalist {
+  border: 4px solid #000000;
+  background: #ffffff;
+  padding: 12px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  text-transform: uppercase;
+  box-shadow: inset 2px 2px 0px #000000;
+}
+
+.input-brutalist:focus {
+  outline: none;
+  background: #ffff00;
+  box-shadow: inset 4px 4px 0px #000000;
+}
+
+/* Brutalist Form Labels */
+.label-brutalist {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #000000;
+}
+
+/* Error Messages */
+.error-brutalist {
+  background: #ff0000;
+  color: #ffffff;
+  border: 4px solid #000000;
+  padding: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0px #000000;
+}
+
+/* Success Messages */
+.success-brutalist {
+  background: #00ff00;
+  color: #000000;
+  border: 4px solid #000000;
+  padding: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0px #000000;
+}
