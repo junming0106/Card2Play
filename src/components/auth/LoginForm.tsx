@@ -130,6 +130,7 @@ export const LoginForm: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
               className="input-brutalist w-full"
               placeholder="輸入你的電子郵件"
             />
@@ -145,6 +146,7 @@ export const LoginForm: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
               className="input-brutalist w-full"
               placeholder="輸入你的密碼"
             />

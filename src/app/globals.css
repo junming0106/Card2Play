@@ -27,7 +27,7 @@ h6 {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 2px;
-  text-shadow: 3px 3px 0px #000000;
+  text-shadow: 3px 3px 1px #fbe020;
 }
 
 /* Brutalist Buttons */
@@ -65,7 +65,6 @@ h6 {
   padding: 12px;
   font-family: Arial, Helvetica, sans-serif;
   font-weight: bold;
-  text-transform: uppercase;
   box-shadow: inset 2px 2px 0px #000000;
 }
 

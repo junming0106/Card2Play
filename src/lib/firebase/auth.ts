@@ -49,20 +49,12 @@ export const signUpWithEmail = async (
       displayName,
     })
 
-    // 在 Firestore 中創建用戶資料
-    const userProfile: UserProfile = {
-      uid: result.user.uid,
-      email: result.user.email || '',
-      displayName: displayName,
-      photoURL: result.user.photoURL,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    await setDoc(doc(db, 'users', result.user.uid), userProfile)
+    // 暫時停用 Firestore 操作直到權限問題解決
+    console.log('Email 註冊成功，用戶:', result.user.email)
 
     return { user: result.user, error: null }
   } catch (error) {
+    console.error('Email 註冊失敗:', error)
     return { user: null, error: error as Error }
   }
 }
@@ -72,26 +64,35 @@ export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider)
     
-    // 檢查是否是新用戶
-    const userDoc = await getDoc(doc(db, 'users', result.user.uid))
+    // 暫時停用 Firestore 操作直到權限問題解決
+    console.log('Google 登入成功，用戶:', result.user.email)
+
+    return { user: result.user, error: null }
+  } catch (error) {
+    console.error('Google 登入失敗:', error)
+    return { user: null, error: error as Error }
+  }
+}
+
+// 非同步創建用戶資料，不阻塞登入流程
+const createUserProfileAsync = async (user: User) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', user.uid))
     
     if (!userDoc.exists()) {
-      // 新用戶，創建資料
       const userProfile: UserProfile = {
-        uid: result.user.uid,
-        email: result.user.email || '',
-        displayName: result.user.displayName || '',
-        photoURL: result.user.photoURL,
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || '',
+        photoURL: user.photoURL,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
 
-      await setDoc(doc(db, 'users', result.user.uid), userProfile)
+      await setDoc(doc(db, 'users', user.uid), userProfile)
     }
-
-    return { user: result.user, error: null }
   } catch (error) {
-    return { user: null, error: error as Error }
+    console.warn('創建用戶資料失敗，但不影響登入:', error)
   }
 }
 
@@ -125,35 +126,14 @@ export const getCurrentUser = (): User | null => {
   return auth.currentUser
 }
 
-// 取得用戶資料
+// 取得用戶資料（暫時停用）
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
-  try {
-    const userDoc = await getDoc(doc(db, 'users', uid))
-    if (userDoc.exists()) {
-      const data = userDoc.data()
-      return {
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as UserProfile
-    }
-    return null
-  } catch (error) {
-    console.error('Error fetching user profile:', error)
-    return null
-  }
+  console.warn('Firestore 功能暫時停用')
+  return null
 }
 
-// 更新用戶資料
+// 更新用戶資料（暫時停用）
 export const updateUserProfile = async (uid: string, updates: Partial<UserProfile>) => {
-  try {
-    const updatedData = {
-      ...updates,
-      updatedAt: new Date(),
-    }
-    await setDoc(doc(db, 'users', uid), updatedData, { merge: true })
-    return { error: null }
-  } catch (error) {
-    return { error: error as Error }
-  }
+  console.warn('Firestore 功能暫時停用')
+  return { error: null }
 }

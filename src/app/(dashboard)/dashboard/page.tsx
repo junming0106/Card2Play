@@ -1,26 +1,26 @@
-'use client'
+"use client";
 
-import React from 'react'
-import { useAuth } from '@/components/auth/AuthProvider'
-import { signOutUser } from '@/lib/firebase/auth'
-import { useRouter } from 'next/navigation'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import React from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { signOutUser } from "@/lib/firebase/auth";
+import { useRouter } from "next/navigation";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export default function DashboardPage() {
-  const { user } = useAuth()
-  const router = useRouter()
+  const { user } = useAuth();
+  const router = useRouter();
 
   const handleSignOut = async () => {
-    const { error } = await signOutUser()
+    const { error } = await signOutUser();
     if (!error) {
-      router.push('/login')
+      router.push("/login");
     }
-  }
+  };
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-purple-300 p-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-purple-300 flex flex-col items-center justify-center p-4">
+        <div className="max-w-4xl w-full">
           <header className="bg-white border-8 border-black p-6 shadow-[16px_16px_0px_#000000] mb-8">
             <div className="flex justify-between items-center">
               <div>
@@ -69,14 +69,21 @@ export default function DashboardPage() {
           <div className="mt-8 bg-white border-8 border-black p-6 shadow-[16px_16px_0px_#000000]">
             <h2 className="text-3xl font-black mb-4">用戶資訊</h2>
             <div className="space-y-2 font-bold">
-              <p><span className="text-red-500">EMAIL:</span> {user?.email}</p>
-              <p><span className="text-blue-500">名稱:</span> {user?.displayName || '未設定'}</p>
-              <p><span className="text-green-500">UID:</span> {user?.uid}</p>
-              <p><span className="text-purple-500">驗證狀態:</span> {user?.emailVerified ? '已驗證' : '未驗證'}</p>
+              <p>
+                <span className="text-red-500">EMAIL:</span> {user?.email}
+              </p>
+              <p>
+                <span className="text-blue-500">名稱:</span>{" "}
+                {user?.displayName || "未設定"}
+              </p>
+              <p>
+                <span className="text-purple-500">驗證狀態:</span>{" "}
+                {user?.emailVerified ? "已驗證" : "未驗證"}
+              </p>
             </div>
           </div>
         </div>
       </div>
     </ProtectedRoute>
-  )
+  );
 }

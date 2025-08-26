@@ -100,6 +100,7 @@ export default function RegisterPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               required
+              autoComplete="name"
               className="input-brutalist w-full"
               placeholder="輸入你的顯示名稱"
             />
@@ -115,6 +116,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
               className="input-brutalist w-full"
               placeholder="輸入你的電子郵件"
             />
@@ -131,6 +133,7 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="new-password"
               className="input-brutalist w-full"
               placeholder="輸入你的密碼"
             />
@@ -150,6 +153,7 @@ export default function RegisterPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="new-password"
               className="input-brutalist w-full"
               placeholder="再次輸入密碼"
             />
