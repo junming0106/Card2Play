@@ -173,42 +173,46 @@ export default function CollectionPage() {
           {/* 新增遊戲區域 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-8 sm:mb-12">
             {/* 搜尋 Nintendo Switch 遊戲 */}
-            <div className="bg-cyan-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform rotate-1">
+            <div className="bg-cyan-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform rotate-1 min-h-[280px] sm:min-h-[320px] flex flex-col">
               <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">🔍 搜尋遊戲</h2>
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 從 {nintendoGames.length} 款 Nintendo Switch 遊戲中搜尋
               </p>
-              <GameSearch
-                games={nintendoGames}
-                onSelectGame={handleSelectGame}
-                disabled={loading || (stats?.total || 0) >= 5}
-              />
-              {(stats?.total || 0) >= 5 && (
-                <div className="mt-3 bg-red-100 border-2 border-red-400 p-2 text-center">
-                  <p className="text-sm font-bold text-red-800">
-                    已達到收藏上限（5個遊戲）
-                  </p>
-                </div>
-              )}
+              <div className="flex-1 flex flex-col justify-center">
+                <GameSearch
+                  games={nintendoGames}
+                  onSelectGame={handleSelectGame}
+                  disabled={loading || (stats?.total || 0) >= 5}
+                />
+                {(stats?.total || 0) >= 5 && (
+                  <div className="mt-3 bg-red-100 border-2 border-red-400 p-2 text-center">
+                    <p className="text-sm font-bold text-red-800">
+                      已達到收藏上限（5個遊戲）
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 手動新增遊戲 */}
-            <div className="bg-pink-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform -rotate-1">
+            <div className="bg-pink-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform -rotate-1 min-h-[280px] sm:min-h-[320px] flex flex-col">
               <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">➕ 自定義遊戲</h2>
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 找不到遊戲？手動新增吧！
               </p>
-              <AddCustomGame
-                onSuccess={handleUpdate}
-                disabled={loading || (stats?.total || 0) >= 5}
-              />
-              {(stats?.total || 0) >= 5 && (
-                <div className="mt-3 bg-red-100 border-2 border-red-400 p-2 text-center">
-                  <p className="text-sm font-bold text-red-800">
-                    已達到收藏上限（5個遊戲）
-                  </p>
-                </div>
-              )}
+              <div className="flex-1 flex flex-col justify-center">
+                <AddCustomGame
+                  onSuccess={handleUpdate}
+                  disabled={loading || (stats?.total || 0) >= 5}
+                />
+                {(stats?.total || 0) >= 5 && (
+                  <div className="mt-3 bg-red-100 border-2 border-red-400 p-2 text-center">
+                    <p className="text-sm font-bold text-red-800">
+                      已達到收藏上限（5個遊戲）
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
