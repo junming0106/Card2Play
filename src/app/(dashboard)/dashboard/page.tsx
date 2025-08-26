@@ -44,7 +44,10 @@ export default function DashboardPage() {
             <div className="card-brutalist bg-yellow-400">
               <h3 className="text-2xl font-black mb-4">我的收藏</h3>
               <p className="font-bold">管理你的遊戲收藏清單</p>
-              <button className="btn-brutalist mt-4 bg-green-500 text-white">
+              <button 
+                onClick={() => router.push('/collection')}
+                className="btn-brutalist mt-4 bg-green-500 text-white"
+              >
                 查看收藏
               </button>
             </div>

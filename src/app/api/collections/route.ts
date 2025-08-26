@@ -6,24 +6,14 @@ import {
   createErrorResponse,
   getSearchParams,
 } from '@/lib/utils/api'
-
-export interface CollectionItem {
-  gameId: string
-  gameTitle: string
-  status: 'owned' | 'wanted' | 'completed'
-  rating?: number
-  notes?: string
-  addedAt: Date
-  updatedAt: Date
-}
-
-export interface AddToCollectionRequest {
-  gameId: string
-  gameTitle: string
-  status: 'owned' | 'wanted' | 'completed'
-  rating?: number
-  notes?: string
-}
+import { 
+  CollectionItemExtended, 
+  AddToCollectionRequest, 
+  UpdateCollectionRequest,
+  CollectionStats,
+  CollectionStatus,
+  UserCustomGame
+} from '@/types/collection'
 
 // GET /api/collections - 取得用戶收藏
 export async function GET(request: NextRequest) {
@@ -33,9 +23,11 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('未經授權', 401)
     }
 
-    const { search, sortBy = 'addedAt', sortOrder } = getSearchParams(request)
+    const { search, sortBy = 'addedAt', sortOrder = 'desc' } = getSearchParams(request)
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status') as 'owned' | 'wanted' | 'completed' | null
+    const status = searchParams.get('status') as CollectionStatus | null
+    const rating = searchParams.get('rating') ? parseInt(searchParams.get('rating')!) : null
+    const isCustomGame = searchParams.get('isCustomGame') === 'true'
 
     // 建立查詢
     let collectionRef = adminDb.collection(`collections/${user.uid}/games`)
@@ -46,6 +38,16 @@ export async function GET(request: NextRequest) {
     // 狀態過濾
     if (status) {
       queryFilters.push(['status', '==', status])
+    }
+
+    // 評分過濾
+    if (rating) {
+      queryFilters.push(['rating', '==', rating])
+    }
+
+    // 自定義遊戲過濾
+    if (isCustomGame !== null) {
+      queryFilters.push(['isCustomGame', '==', isCustomGame])
     }
 
     // 搜尋過濾 (搜尋遊戲標題)
@@ -64,12 +66,12 @@ export async function GET(request: NextRequest) {
     const collectionQuery = query.orderBy(sortBy, sortOrder)
 
     const snapshot = await collectionQuery.get()
-    const collections: (CollectionItem & { id: string })[] = snapshot.docs.map((doc: any) => ({
+    const collections: CollectionItemExtended[] = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
       addedAt: doc.data().addedAt.toDate(),
       updatedAt: doc.data().updatedAt.toDate(),
-    })) as (CollectionItem & { id: string })[]
+    })) as CollectionItemExtended[]
 
     return createSuccessResponse(collections)
 
@@ -94,8 +96,17 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('缺少必要欄位')
     }
 
-    if (!['owned', 'wanted', 'completed'].includes(body.status)) {
+    if (!['owned', 'wanted', 'completed', 'trading'].includes(body.status)) {
       return createErrorResponse('無效的收藏狀態')
+    }
+
+    // 檢查收藏數量限制（最多5個）
+    const existingCollectionSnapshot = await adminDb
+      .collection(`collections/${user.uid}/games`)
+      .get()
+
+    if (existingCollectionSnapshot.size >= 5) {
+      return createErrorResponse('每位用戶最多只能收藏 5 個遊戲', 400)
     }
 
     // 驗證評分範圍
@@ -103,12 +114,15 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('評分必須在 1-5 之間')
     }
 
-    const collectionData: CollectionItem = {
+    const collectionData: CollectionItemExtended = {
+      id: body.gameId,
       gameId: body.gameId,
       gameTitle: body.gameTitle,
       status: body.status,
       rating: body.rating,
       notes: body.notes,
+      isCustomGame: body.isCustomGame || false,
+      customGameData: body.customGameData as UserCustomGame | undefined,
       addedAt: new Date(),
       updatedAt: new Date(),
     }
@@ -153,6 +167,52 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Error removing from collection:', error)
     return createErrorResponse('無法從收藏中移除', 500)
+  }
+}
+
+// PUT /api/collections - 更新收藏項目
+export async function PUT(request: NextRequest) {
+  try {
+    const user = await verifyAuthToken(request)
+    if (!user) {
+      return createErrorResponse('未經授權', 401)
+    }
+
+    const { searchParams } = new URL(request.url)
+    const gameId = searchParams.get('gameId')
+
+    if (!gameId) {
+      return createErrorResponse('缺少遊戲 ID')
+    }
+
+    const body: UpdateCollectionRequest = await request.json()
+
+    // 驗證狀態值
+    if (body.status && !['owned', 'wanted', 'completed', 'trading'].includes(body.status)) {
+      return createErrorResponse('無效的收藏狀態')
+    }
+
+    // 驗證評分範圍
+    if (body.rating !== undefined && (body.rating < 1 || body.rating > 5)) {
+      return createErrorResponse('評分必須在 1-5 之間')
+    }
+
+    // 更新收藏項目
+    const updateData = {
+      ...body,
+      updatedAt: new Date(),
+    }
+
+    await adminDb
+      .collection(`collections/${user.uid}/games`)
+      .doc(gameId)
+      .update(updateData)
+
+    return createSuccessResponse(updateData, '收藏已更新')
+
+  } catch (error) {
+    console.error('Error updating collection:', error)
+    return createErrorResponse('無法更新收藏', 500)
   }
 }
 
