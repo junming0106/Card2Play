@@ -178,7 +178,7 @@ export default function CollectionPage() {
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 從 {nintendoGames.length} 款 Nintendo Switch 遊戲中搜尋
               </p>
-              <div className="flex-1 flex flex-col justify-center">
+              <div className="flex-1">
                 <GameSearch
                   games={nintendoGames}
                   onSelectGame={handleSelectGame}
@@ -200,7 +200,7 @@ export default function CollectionPage() {
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 找不到遊戲？手動新增吧！
               </p>
-              <div className="flex-1 flex flex-col justify-center">
+              <div className="flex-1">
                 <AddCustomGame
                   onSuccess={handleUpdate}
                   disabled={loading || (stats?.total || 0) >= 5}
