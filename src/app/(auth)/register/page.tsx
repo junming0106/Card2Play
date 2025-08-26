@@ -70,103 +70,107 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold mb-6 text-center">註冊 Card2Play</h2>
+    <div className="min-h-screen bg-orange-300 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white border-8 border-black p-8 shadow-[16px_16px_0px_#000000] transform rotate-1">
+        <header className="text-center mb-8 bg-blue-500 border-4 border-black p-4 transform -rotate-2">
+          <h2 className="text-4xl font-black text-white">註冊 CARD2PLAY</h2>
+        </header>
+        
+        {error && (
+          <div className="error-brutalist mb-6">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleEmailRegister} className="space-y-6">
+          <div>
+            <label htmlFor="displayName" className="label-brutalist block mb-2">
+              顯示名稱
+            </label>
+            <input
+              type="text"
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              required
+              className="input-brutalist w-full"
+              placeholder="輸入你的顯示名稱"
+            />
+          </div>
           
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleEmailRegister} className="space-y-4">
-            <div>
-              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
-                顯示名稱
-              </label>
-              <input
-                type="text"
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                電子郵件
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                密碼
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                確認密碼
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={6}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? '註冊中...' : '註冊'}
-            </button>
-          </form>
-
-          <div className="mt-4">
-            <button
-              onClick={handleGoogleRegister}
-              disabled={loading}
-              className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              使用 Google 註冊
-            </button>
+          <div>
+            <label htmlFor="email" className="label-brutalist block mb-2">
+              電子郵件
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="input-brutalist w-full"
+              placeholder="輸入你的電子郵件"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="password" className="label-brutalist block mb-2">
+              密碼
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="input-brutalist w-full"
+              placeholder="輸入你的密碼"
+            />
           </div>
 
-          <div className="mt-4 text-center">
-            <span className="text-sm text-gray-600">
-              已有帳戶？{' '}
-              <a href="/login" className="text-blue-600 hover:text-blue-500">
-                立即登入
-              </a>
-            </span>
+          <div>
+            <label htmlFor="confirmPassword" className="label-brutalist block mb-2">
+              確認密碼
+            </label>
+            <input
+              type="password"
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              className="input-brutalist w-full"
+              placeholder="再次輸入密碼"
+            />
           </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-brutalist w-full text-xl py-4 disabled:opacity-50"
+          >
+            {loading ? '註冊中...' : '立即註冊'}
+          </button>
+        </form>
+
+        <div className="mt-6">
+          <button
+            onClick={handleGoogleRegister}
+            disabled={loading}
+            className="w-full bg-green-400 text-black border-4 border-black font-bold text-lg py-3 hover:bg-purple-400 hover:text-white transform hover:scale-105 transition-all duration-100 disabled:opacity-50"
+          >
+            使用 GOOGLE 註冊
+          </button>
+        </div>
+
+        <div className="mt-6 text-center bg-pink-400 border-4 border-black p-4">
+          <span className="font-bold text-black">
+            已有帳戶？{' '}
+            <a href="/login" className="bg-yellow-300 text-black px-3 py-1 border-2 border-black hover:bg-cyan-400 transform hover:scale-105 transition-all duration-100 inline-block">
+              立即登入
+            </a>
+          </span>
         </div>
       </div>
     </div>
