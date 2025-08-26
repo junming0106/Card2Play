@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 遊戲圖片 - 所有人可讀，只有管理員可寫
+    match /games/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+                   request.auth.token.admin == true;
+    }
+    
+    // 用戶頭像 - 所有人可讀，只有擁有者可寫
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+                   request.auth.uid == userId &&
+                   request.resource.size < 5 * 1024 * 1024 && // 限制 5MB
+                   request.resource.contentType.matches('image/.*');
+    }
+    
+    // 交易相關圖片 - 只有交易參與者可存取
+    match /trades/{tradeId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+      // 這裡可以添加更複雜的邏輯來檢查交易參與者
+    }
+  }
+}
