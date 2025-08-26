@@ -120,18 +120,18 @@ export default function CollectionPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-orange-300 flex items-center justify-center p-4">
-        <div className="w-full max-w-6xl mx-auto">
+      <div className="min-h-screen bg-orange-300 p-2 sm:p-4 lg:flex lg:items-start lg:justify-center">
+        <div className="w-full max-w-6xl mx-auto lg:mt-8">
           {/* 頁面標題 */}
-          <header className="bg-white border-8 border-black p-6 shadow-[16px_16px_0px_#000000] mb-8 transform -rotate-1">
+          <header className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] mb-4 sm:mb-8 transform -rotate-1">
             <div className="text-center">
-              <h1 className="text-4xl font-black text-black mb-2">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-black mb-2">
                 🎮 我的遊戲收藏
               </h1>
-              <p className="text-lg font-bold text-gray-700 mb-4">
+              <p className="text-sm sm:text-lg font-bold text-gray-700 mb-3 sm:mb-4">
                 管理您的 Nintendo Switch 遊戲收藏
               </p>
-              <div className="inline-block bg-red-500 text-white px-4 py-2 border-4 border-black font-black transform rotate-2">
+              <div className="inline-block bg-red-500 text-white px-3 sm:px-4 py-1 sm:py-2 border-2 sm:border-4 border-black font-black text-sm sm:text-base transform rotate-2">
                 總共 {stats?.total || 0}/5 個遊戲
               </div>
             </div>
@@ -146,36 +146,36 @@ export default function CollectionPage() {
 
           {/* 統計面板 */}
           {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-              <div className="bg-green-400 border-4 border-black p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-3xl font-black">{stats.owned}</div>
-                <div className="font-bold text-green-900">擁有</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 mb-4 sm:mb-8">
+              <div className="bg-green-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.owned}</div>
+                <div className="font-bold text-green-900 text-xs sm:text-sm">擁有</div>
               </div>
-              <div className="bg-yellow-400 border-4 border-black p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-3xl font-black">{stats.wanted}</div>
-                <div className="font-bold text-yellow-900">想要</div>
+              <div className="bg-yellow-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.wanted}</div>
+                <div className="font-bold text-yellow-900 text-xs sm:text-sm">想要</div>
               </div>
-              <div className="bg-blue-400 border-4 border-black p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-3xl font-black">{stats.completed}</div>
-                <div className="font-bold text-blue-900">完成</div>
+              <div className="bg-blue-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.completed}</div>
+                <div className="font-bold text-blue-900 text-xs sm:text-sm">完成</div>
               </div>
-              <div className="bg-purple-400 border-4 border-black p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-3xl font-black">{stats.trading}</div>
-                <div className="font-bold text-purple-900">交換</div>
+              <div className="bg-purple-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.trading}</div>
+                <div className="font-bold text-purple-900 text-xs sm:text-sm">交換</div>
               </div>
-              <div className="bg-pink-400 border-4 border-black p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-3xl font-black">{stats.customGames}</div>
-                <div className="font-bold text-pink-900">自定義</div>
+              <div className="bg-pink-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform col-span-2 sm:col-span-1">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.customGames}</div>
+                <div className="font-bold text-pink-900 text-xs sm:text-sm">自定義</div>
               </div>
             </div>
           )}
 
           {/* 新增遊戲區域 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-4 sm:mb-8">
             {/* 搜尋 Nintendo Switch 遊戲 */}
-            <div className="bg-cyan-400 border-8 border-black p-6 shadow-[8px_8px_0px_#000000] transform rotate-1">
-              <h2 className="text-2xl font-black mb-4 text-center">🔍 搜尋遊戲</h2>
-              <p className="font-bold text-gray-700 mb-4 text-center">
+            <div className="bg-cyan-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform rotate-1">
+              <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">🔍 搜尋遊戲</h2>
+              <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 從 {nintendoGames.length} 款 Nintendo Switch 遊戲中搜尋
               </p>
               <GameSearch
@@ -193,9 +193,9 @@ export default function CollectionPage() {
             </div>
 
             {/* 手動新增遊戲 */}
-            <div className="bg-pink-400 border-8 border-black p-6 shadow-[8px_8px_0px_#000000] transform -rotate-1">
-              <h2 className="text-2xl font-black mb-4 text-center">➕ 自定義遊戲</h2>
-              <p className="font-bold text-gray-700 mb-4 text-center">
+            <div className="bg-pink-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform -rotate-1">
+              <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">➕ 自定義遊戲</h2>
+              <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 找不到遊戲？手動新增吧！
               </p>
               <AddCustomGame
@@ -213,8 +213,8 @@ export default function CollectionPage() {
           </div>
 
           {/* 我的遊戲列表 */}
-          <div className="bg-white border-8 border-black p-6 shadow-[16px_16px_0px_#000000] transform rotate-1">
-            <h2 className="text-3xl font-black mb-6 text-center">📚 我的遊戲列表</h2>
+          <div className="bg-white border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] transform rotate-1">
+            <h2 className="text-2xl sm:text-3xl font-black mb-4 sm:mb-6 text-center">📚 我的遊戲列表</h2>
             <GameList
               collections={collections}
               onUpdate={handleUpdate}

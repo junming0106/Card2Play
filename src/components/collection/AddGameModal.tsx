@@ -72,8 +72,8 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white border-8 border-black shadow-[16px_16px_0px_#000000] max-w-md w-full max-h-[90vh] overflow-y-auto transform rotate-1">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-[9999] overflow-y-auto">
+      <div className="bg-white border-4 sm:border-8 border-black shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] max-w-md w-full my-4 transform rotate-1">
         <div className="p-6">
           {/* 標題 */}
           <div className="flex items-center justify-between mb-6">
