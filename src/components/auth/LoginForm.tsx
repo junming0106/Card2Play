@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signInWithEmail, signInWithGoogle, resetPassword } from '@/lib/firebase/auth'
 
@@ -11,6 +11,28 @@ export const LoginForm: React.FC = () => {
   const [error, setError] = useState('')
   const [resetEmailSent, setResetEmailSent] = useState(false)
   const router = useRouter()
+
+  // 自動清除錯誤訊息
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('')
+      }, 3000) // 3秒後清除錯誤訊息
+
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
+  // 自動清除成功訊息
+  useEffect(() => {
+    if (resetEmailSent) {
+      const timer = setTimeout(() => {
+        setResetEmailSent(false)
+      }, 5000) // 5秒後清除成功訊息
+
+      return () => clearTimeout(timer)
+    }
+  }, [resetEmailSent])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
