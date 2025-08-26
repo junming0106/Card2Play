@@ -78,7 +78,9 @@ export default function DashboardPage() {
               </p>
               <p>
                 <span className="text-purple-500">驗證狀態:</span>{" "}
-                {user?.emailVerified ? "已驗證" : "未驗證"}
+                <span className={user?.emailVerified ? "text-green-600" : "text-red-600"}>
+                  {user?.emailVerified ? "✅ 已驗證" : "❌ 未驗證"}
+                </span>
               </p>
             </div>
           </div>

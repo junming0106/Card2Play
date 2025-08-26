@@ -19,8 +19,18 @@ const firebaseConfig = {
 
 // 檢查環境變數是否存在
 if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+  console.error('Firebase 配置缺失:', {
+    apiKey: !!firebaseConfig.apiKey,
+    authDomain: !!firebaseConfig.authDomain,
+    projectId: !!firebaseConfig.projectId,
+  })
   throw new Error('Firebase configuration is missing. Please check your environment variables.')
 }
+
+console.log('Firebase 配置載入成功:', {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+})
 
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig)

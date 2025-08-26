@@ -46,7 +46,8 @@ export default function RegisterPage() {
     if (error) {
       setError(getErrorMessage((error as any)?.code || "unknown"));
     } else if (user) {
-      router.push("/dashboard");
+      // 註冊成功後跳轉到驗證頁面
+      router.push("/verify-email");
     }
 
     setLoading(false);

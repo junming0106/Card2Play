@@ -7,6 +7,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged,
+  sendEmailVerification,
+  reload,
   User,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
@@ -28,9 +30,12 @@ export interface UserProfile {
 // Email 登入
 export const signInWithEmail = async (email: string, password: string) => {
   try {
+    console.log('嘗試 Email 登入:', email)
     const result = await signInWithEmailAndPassword(auth, email, password)
+    console.log('Email 登入成功:', result.user.email)
     return { user: result.user, error: null }
   } catch (error) {
+    console.error('Email 登入失敗:', error)
     return { user: null, error: error as Error }
   }
 }
@@ -42,15 +47,22 @@ export const signUpWithEmail = async (
   displayName: string
 ) => {
   try {
+    console.log('嘗試 Email 註冊:', email, '密碼長度:', password.length)
     const result = await createUserWithEmailAndPassword(auth, email, password)
+    console.log('Firebase Auth 註冊成功')
     
     // 更新用戶個人資料
     await updateProfile(result.user, {
       displayName,
     })
+    console.log('用戶資料更新成功')
+
+    // 發送驗證郵件
+    await sendEmailVerification(result.user)
+    console.log('驗證郵件已發送到:', result.user.email)
 
     // 暫時停用 Firestore 操作直到權限問題解決
-    console.log('Email 註冊成功，用戶:', result.user.email)
+    console.log('Email 註冊完成，用戶:', result.user.email)
 
     return { user: result.user, error: null }
   } catch (error) {
@@ -136,4 +148,38 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
 export const updateUserProfile = async (uid: string, updates: Partial<UserProfile>) => {
   console.warn('Firestore 功能暫時停用')
   return { error: null }
+}
+
+// 發送驗證郵件
+export const sendVerificationEmail = async (): Promise<{ error: Error | null }> => {
+  try {
+    const user = auth.currentUser
+    if (!user) {
+      throw new Error('沒有登入用戶')
+    }
+
+    await sendEmailVerification(user)
+    console.log('驗證郵件已重新發送到:', user.email)
+    return { error: null }
+  } catch (error) {
+    console.error('發送驗證郵件失敗:', error)
+    return { error: error as Error }
+  }
+}
+
+// 重新載入用戶資料
+export const reloadUser = async (): Promise<{ error: Error | null }> => {
+  try {
+    const user = auth.currentUser
+    if (!user) {
+      throw new Error('沒有登入用戶')
+    }
+
+    await reload(user)
+    console.log('用戶資料已重新載入，驗證狀態:', user.emailVerified)
+    return { error: null }
+  } catch (error) {
+    console.error('重新載入用戶資料失敗:', error)
+    return { error: error as Error }
+  }
 }

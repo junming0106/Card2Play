@@ -15,6 +15,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   React.useEffect(() => {
     if (!loading && !user) {
       router.push('/login')
+    } else if (!loading && user && !user.emailVerified) {
+      // 用戶已登入但未驗證電子郵件，跳轉到驗證頁面
+      router.push('/verify-email')
     }
   }, [user, loading, router])
 
@@ -26,7 +29,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     )
   }
 
-  if (!user) {
+  if (!user || !user.emailVerified) {
     return null
   }
 

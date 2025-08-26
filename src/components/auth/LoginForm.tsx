@@ -48,7 +48,12 @@ export const LoginForm: React.FC = () => {
     if (error) {
       setError(getErrorMessage((error as any)?.code || "unknown"));
     } else if (user) {
-      router.push("/dashboard");
+      // 檢查用戶是否已驗證電子郵件
+      if (user.emailVerified) {
+        router.push("/dashboard");
+      } else {
+        router.push("/verify-email");
+      }
     }
 
     setLoading(false);
@@ -63,7 +68,12 @@ export const LoginForm: React.FC = () => {
     if (error) {
       setError(getErrorMessage((error as any)?.code || "unknown"));
     } else if (user) {
-      router.push("/dashboard");
+      // Google 帳戶通常已驗證，但仍檢查一次
+      if (user.emailVerified) {
+        router.push("/dashboard");
+      } else {
+        router.push("/verify-email");
+      }
     }
 
     setLoading(false);
