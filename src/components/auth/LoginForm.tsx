@@ -1,104 +1,108 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { signInWithEmail, signInWithGoogle, resetPassword } from '@/lib/firebase/auth'
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  signInWithEmail,
+  signInWithGoogle,
+  resetPassword,
+} from "@/lib/firebase/auth";
 
 export const LoginForm: React.FC = () => {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [resetEmailSent, setResetEmailSent] = useState(false)
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const router = useRouter();
 
   // 自動清除錯誤訊息
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
-        setError('')
-      }, 3000) // 3秒後清除錯誤訊息
+        setError("");
+      }, 1500); // 1.5秒後清除錯誤訊息
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     }
-  }, [error])
+  }, [error]);
 
   // 自動清除成功訊息
   useEffect(() => {
     if (resetEmailSent) {
       const timer = setTimeout(() => {
-        setResetEmailSent(false)
-      }, 5000) // 5秒後清除成功訊息
+        setResetEmailSent(false);
+      }, 1500); // 1.5秒後清除成功訊息
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     }
-  }, [resetEmailSent])
+  }, [resetEmailSent]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-    const { user, error } = await signInWithEmail(email, password)
-    
+    const { user, error } = await signInWithEmail(email, password);
+
     if (error) {
-      setError(getErrorMessage((error as any)?.code || 'unknown'))
+      setError(getErrorMessage((error as any)?.code || "unknown"));
     } else if (user) {
-      router.push('/dashboard')
+      router.push("/dashboard");
     }
-    
-    setLoading(false)
-  }
+
+    setLoading(false);
+  };
 
   const handleGoogleLogin = async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
 
-    const { user, error } = await signInWithGoogle()
-    
+    const { user, error } = await signInWithGoogle();
+
     if (error) {
-      setError(getErrorMessage((error as any)?.code || 'unknown'))
+      setError(getErrorMessage((error as any)?.code || "unknown"));
     } else if (user) {
-      router.push('/dashboard')
+      router.push("/dashboard");
     }
-    
-    setLoading(false)
-  }
+
+    setLoading(false);
+  };
 
   const handlePasswordReset = async () => {
     if (!email) {
-      setError('請輸入電子郵件地址')
-      return
+      setError("請輸入電子郵件地址");
+      return;
     }
 
-    setLoading(true)
-    const { error } = await resetPassword(email)
-    
+    setLoading(true);
+    const { error } = await resetPassword(email);
+
     if (error) {
-      setError(getErrorMessage((error as any)?.code || 'unknown'))
+      setError(getErrorMessage((error as any)?.code || "unknown"));
     } else {
-      setResetEmailSent(true)
+      setResetEmailSent(true);
     }
-    
-    setLoading(false)
-  }
+
+    setLoading(false);
+  };
 
   const getErrorMessage = (errorCode: string): string => {
     switch (errorCode) {
-      case 'auth/user-not-found':
-        return '找不到此電子郵件對應的用戶'
-      case 'auth/wrong-password':
-        return '密碼錯誤'
-      case 'auth/invalid-email':
-        return '電子郵件格式不正確'
-      case 'auth/user-disabled':
-        return '此帳戶已被停用'
-      case 'auth/too-many-requests':
-        return '登入嘗試次數過多，請稍後再試'
+      case "auth/user-not-found":
+        return "找不到此電子郵件對應的用戶";
+      case "auth/wrong-password":
+        return "密碼錯誤";
+      case "auth/invalid-email":
+        return "電子郵件格式不正確";
+      case "auth/user-disabled":
+        return "此帳戶已被停用";
+      case "auth/too-many-requests":
+        return "登入嘗試次數過多，請稍後再試";
       default:
-        return '登入失敗，請稍後再試'
+        return "登入失敗，請稍後再試";
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-cyan-300 flex items-center justify-center p-4">
@@ -106,13 +110,9 @@ export const LoginForm: React.FC = () => {
         <header className="text-center mb-4 bg-red-500 border-4 border-black p-2 transform rotate-2">
           <h2 className="text-2xl font-black text-white">登入 CARD2PLAY</h2>
         </header>
-        
-        {error && (
-          <div className="error-brutalist mb-6">
-            {error}
-          </div>
-        )}
-        
+
+        {error && <div className="error-brutalist mb-6">{error}</div>}
+
         {resetEmailSent && (
           <div className="success-brutalist mb-6">
             密碼重設郵件已發送，請檢查您的信箱
@@ -134,7 +134,7 @@ export const LoginForm: React.FC = () => {
               placeholder="輸入你的電子郵件"
             />
           </div>
-          
+
           <div>
             <label htmlFor="password" className="label-brutalist block mb-2">
               密碼
@@ -155,7 +155,7 @@ export const LoginForm: React.FC = () => {
             disabled={loading}
             className="btn-brutalist w-full text-xl py-4 disabled:opacity-50"
           >
-            {loading ? '登入中...' : '登入'}
+            {loading ? "登入中..." : "登入"}
           </button>
         </form>
 
@@ -181,13 +181,16 @@ export const LoginForm: React.FC = () => {
 
         <div className="mt-6 text-center bg-purple-400 border-4 border-black p-4">
           <span className="font-bold text-black">
-            還沒有帳戶？{' '}
-            <a href="/register" className="bg-yellow-300 text-black px-3 py-1 border-2 border-black hover:bg-green-400 transform hover:scale-105 transition-all duration-100 inline-block">
+            還沒有帳戶？{" "}
+            <a
+              href="/register"
+              className="bg-yellow-300 text-black px-3 py-1 border-2 border-black hover:bg-green-400 transform hover:scale-105 transition-all duration-100 inline-block"
+            >
               立即註冊
             </a>
           </span>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
