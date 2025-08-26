@@ -80,9 +80,9 @@ export const LoginForm: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-cyan-300 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white border-8 border-black p-8 shadow-[16px_16px_0px_#000000] transform -rotate-1">
-        <header className="text-center mb-6 bg-red-500 border-4 border-black p-3 transform rotate-2">
-          <h2 className="text-3xl font-black text-white">登入 CARD2PLAY</h2>
+      <div className="max-w-md w-full bg-white border-8 border-black p-6 shadow-[16px_16px_0px_#000000] transform -rotate-1">
+        <header className="text-center mb-4 bg-red-500 border-4 border-black p-2 transform rotate-2">
+          <h2 className="text-2xl font-black text-white">登入 CARD2PLAY</h2>
         </header>
         
         {error && (
