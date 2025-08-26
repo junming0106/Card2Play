@@ -120,8 +120,8 @@ export default function CollectionPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-orange-300 p-2 sm:p-4 lg:flex lg:items-start lg:justify-center">
-        <div className="w-full max-w-6xl mx-auto lg:mt-8">
+      <div className="min-h-screen bg-orange-300 p-2 sm:p-4 pb-8 sm:pb-12 lg:flex lg:items-start lg:justify-center">
+        <div className="w-full max-w-6xl mx-auto lg:mt-8 mb-8">
           {/* 頁面標題 */}
           <header className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] mb-4 sm:mb-8 transform -rotate-1">
             <div className="text-center">
@@ -171,7 +171,7 @@ export default function CollectionPage() {
           )}
 
           {/* 新增遊戲區域 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-4 sm:mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-8 sm:mb-12">
             {/* 搜尋 Nintendo Switch 遊戲 */}
             <div className="bg-cyan-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform rotate-1">
               <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">🔍 搜尋遊戲</h2>
@@ -213,8 +213,8 @@ export default function CollectionPage() {
           </div>
 
           {/* 我的遊戲列表 */}
-          <div className="bg-white border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] transform rotate-1">
-            <h2 className="text-2xl sm:text-3xl font-black mb-4 sm:mb-6 text-center">📚 我的遊戲列表</h2>
+          <div className="bg-white border-4 sm:border-8 border-black p-4 sm:p-8 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] transform rotate-1">
+            <h2 className="text-2xl sm:text-3xl font-black mb-6 sm:mb-8 text-center">📚 我的遊戲列表</h2>
             <GameList
               collections={collections}
               onUpdate={handleUpdate}
