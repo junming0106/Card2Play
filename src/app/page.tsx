@@ -1,3 +1,7 @@
+'use client'
+
+import Link from 'next/link'
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-yellow-300 p-8 flex items-center justify-center">
@@ -22,7 +26,7 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               管理你的 NINTENDO SWITCH 遊戲收藏
             </p>
-            <button className="btn-brutalist">開始收藏</button>
+            <Link href="/dashboard" className="btn-brutalist inline-block">開始收藏</Link>
           </div>
 
           <div className="card-brutalist bg-purple-400 transform -rotate-1 hover:rotate-0 transition-transform duration-100 text-center">
@@ -35,7 +39,7 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               與其他玩家交易遊戲卡片
             </p>
-            <button className="btn-brutalist">進入市集</button>
+            <Link href="/dashboard" className="btn-brutalist inline-block">進入市集</Link>
           </div>
 
           <div className="card-brutalist bg-green-400 transform rotate-1 hover:rotate-0 transition-transform duration-100 text-center">
@@ -48,19 +52,19 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               基於你的偏好推薦新遊戲
             </p>
-            <button className="btn-brutalist">探索遊戲</button>
+            <Link href="/dashboard" className="btn-brutalist inline-block">探索遊戲</Link>
           </div>
         </div>
 
         <section className="bg-black text-white border-8 border-red-500 p-8 shadow-[8px_8px_0px_#ff0000] mb-8">
           <h2 className="text-4xl font-black mb-6 text-center">立即開始！</h2>
           <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <button className="bg-yellow-400 text-black border-4 border-white px-8 py-4 font-black text-xl hover:bg-red-500 hover:text-white transform hover:scale-105 transition-all duration-100">
+            <Link href="/register" className="bg-yellow-400 text-black border-4 border-white px-8 py-4 font-black text-xl hover:bg-red-500 hover:text-white transform hover:scale-105 transition-all duration-100 inline-block text-center">
               免費註冊
-            </button>
-            <button className="bg-white text-black border-4 border-yellow-400 px-8 py-4 font-black text-xl hover:bg-yellow-400 transform hover:scale-105 transition-all duration-100">
+            </Link>
+            <Link href="/login" className="bg-white text-black border-4 border-yellow-400 px-8 py-4 font-black text-xl hover:bg-yellow-400 transform hover:scale-105 transition-all duration-100 inline-block text-center">
               立即登入
-            </button>
+            </Link>
           </div>
         </section>
 
