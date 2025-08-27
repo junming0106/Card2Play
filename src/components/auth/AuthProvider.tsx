@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User } from 'firebase/auth'
 import { onAuthStateChange } from '@/lib/firebase/auth'
+import { setAuthToken, setUserInfo, clearAuthCookies } from '@/lib/utils/cookies'
 
 interface AuthContextType {
   user: User | null
@@ -31,8 +32,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      setUser(user)
+    // 監聽 Firebase 認證狀態變化
+    const unsubscribe = onAuthStateChange(async (user) => {
+      if (user) {
+        // 用戶已登入，同步更新 cookie 以備後用
+        try {
+          const token = await user.getIdToken()
+          setAuthToken(token)
+          setUserInfo({
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || '',
+            emailVerified: user.emailVerified
+          })
+        } catch (error) {
+          console.error('更新認證 cookie 失敗:', error)
+        }
+        setUser(user)
+      } else {
+        // 用戶未登入，清除 cookies
+        clearAuthCookies()
+        setUser(null)
+      }
       setLoading(false)
     })
 

@@ -10,56 +10,35 @@ import { CollectionStats } from '@/types/collection'
 // GET /api/collections/stats - 取得用戶收藏統計
 export async function GET(request: NextRequest) {
   try {
+    console.log('📊 開始讀取收藏統計...')
+    
     const user = await verifyAuthToken(request)
     if (!user) {
+      console.log('❌ 統計讀取：身份驗證失敗')
       return createErrorResponse('未經授權', 401)
     }
 
-    // 取得所有收藏項目
+    console.log('✅ 身份驗證成功，讀取統計:', user.uid)
+
     const collectionsSnapshot = await adminDb
       .collection(`collections/${user.uid}/games`)
       .get()
 
-    // 取得自定義遊戲數量
-    const customGamesSnapshot = await adminDb
-      .collection(`customGames/${user.uid}/games`)
-      .get()
-
-    // 初始化統計
+    const collections = collectionsSnapshot.docs.map(doc => doc.data())
+    
     const stats: CollectionStats = {
-      total: 0,
-      owned: 0,
-      wanted: 0,
-      completed: 0,
-      trading: 0,
-      customGames: customGamesSnapshot.size,
+      total: collections.length,
+      持有中: collections.filter(item => item.status === '持有中').length,
+      想要交換: collections.filter(item => item.status === '想要交換').length,
+      已借出: collections.filter(item => item.status === '已借出').length,
+      customGames: collections.filter(item => item.isCustomGame).length,
     }
 
-    // 計算各狀態數量
-    collectionsSnapshot.forEach((doc) => {
-      const data = doc.data()
-      stats.total++
-      
-      switch (data.status) {
-        case 'owned':
-          stats.owned++
-          break
-        case 'wanted':
-          stats.wanted++
-          break
-        case 'completed':
-          stats.completed++
-          break
-        case 'trading':
-          stats.trading++
-          break
-      }
-    })
-
+    console.log('✅ 統計計算完成:', stats)
     return createSuccessResponse(stats)
 
   } catch (error) {
-    console.error('Error fetching collection stats:', error)
+    console.error('💥 統計讀取錯誤:', error)
     return createErrorResponse('無法取得收藏統計', 500)
   }
 }

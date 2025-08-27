@@ -23,17 +23,27 @@ export interface PaginatedResponse<T = any> {
 export async function verifyAuthToken(request: NextRequest) {
   try {
     const authHeader = request.headers.get('Authorization')
+    console.log('🔍 Authorization Header:', authHeader ? `Bearer ${authHeader.substring(7, 20)}...` : 'null')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ 無效的 Authorization Header 格式')
       return null
     }
 
     const idToken = authHeader.substring(7) // 移除 "Bearer " 前綴
+    console.log('🎫 ID Token 長度:', idToken.length)
+    
+    console.log('🔐 開始驗證 ID Token...')
     const decodedToken = await adminAuth.verifyIdToken(idToken)
+    console.log('✅ Token 驗證成功，UID:', decodedToken.uid)
     
     return decodedToken
   } catch (error) {
-    console.error('Token verification error:', error)
+    console.error('💥 Token 驗證錯誤:', error)
+    console.error('💥 錯誤詳情:', error instanceof Error ? error.message : 'Unknown error')
+    if (error instanceof Error && error.message) {
+      console.error('💥 完整錯誤:', error.message)
+    }
     return null
   }
 }

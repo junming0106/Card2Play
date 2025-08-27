@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -27,10 +27,7 @@ if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.proj
   throw new Error('Firebase configuration is missing. Please check your environment variables.')
 }
 
-console.log('Firebase 配置載入成功:', {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
-})
+// Firebase 配置載入成功
 
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig)
@@ -39,5 +36,12 @@ const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
+
+// 設定 Firebase Auth 持久化 - 使用本地儲存
+if (typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error('Firebase Auth 持久化設定失敗:', error)
+  })
+}
 
 export default app

@@ -69,7 +69,7 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               選擇你想交換的遊戲卡吧！
             </p>
-            <Link href="/collection" className="btn-brutalist inline-block">
+            <Link href="/hall" className="btn-brutalist inline-block">
               進入大廳
             </Link>
           </div>

@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, db } from './config'
+import { setAuthToken, setUserInfo, clearAuthCookies } from '@/lib/utils/cookies'
 
 // Google 登入提供者
 const googleProvider = new GoogleAuthProvider()
@@ -33,6 +34,21 @@ export const signInWithEmail = async (email: string, password: string) => {
     console.log('嘗試 Email 登入:', email)
     const result = await signInWithEmailAndPassword(auth, email, password)
     console.log('Email 登入成功:', result.user.email)
+    
+    // 取得並儲存 token 到 cookie
+    const token = await result.user.getIdToken()
+    setAuthToken(token)
+    
+    // 儲存用戶資訊到 cookie
+    setUserInfo({
+      uid: result.user.uid,
+      email: result.user.email || '',
+      displayName: result.user.displayName || '',
+      emailVerified: result.user.emailVerified
+    })
+    
+    console.log('用戶認證資訊已儲存到 cookie (有效期 2 天)')
+    
     return { user: result.user, error: null }
   } catch (error) {
     console.error('Email 登入失敗:', error)
@@ -76,8 +92,20 @@ export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider)
     
-    // 暫時停用 Firestore 操作直到權限問題解決
+    // 取得並儲存 token 到 cookie
+    const token = await result.user.getIdToken()
+    setAuthToken(token)
+    
+    // 儲存用戶資訊到 cookie
+    setUserInfo({
+      uid: result.user.uid,
+      email: result.user.email || '',
+      displayName: result.user.displayName || '',
+      emailVerified: result.user.emailVerified
+    })
+    
     console.log('Google 登入成功，用戶:', result.user.email)
+    console.log('用戶認證資訊已儲存到 cookie (有效期 2 天)')
 
     return { user: result.user, error: null }
   } catch (error) {
@@ -112,6 +140,9 @@ const createUserProfileAsync = async (user: User) => {
 export const signOutUser = async () => {
   try {
     await signOut(auth)
+    // 清除所有認證相關的 cookies
+    clearAuthCookies()
+    console.log('已登出並清除認證 cookies')
     return { error: null }
   } catch (error) {
     return { error: error as Error }
