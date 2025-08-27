@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { signOutUser } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
@@ -21,6 +22,16 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-purple-300 flex flex-col items-center justify-center p-4">
         <div className="max-w-4xl w-full">
+          {/* 回首頁按鈕 */}
+          <div className="mb-6">
+            <Link 
+              href="/"
+              className="inline-flex items-center bg-red-500 text-white border-4 border-black px-4 py-2 font-black text-sm sm:text-base hover:bg-red-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
+            >
+              🏠 回首頁
+            </Link>
+          </div>
+
           <header className="bg-white border-8 border-black p-6 shadow-[16px_16px_0px_#000000] mb-8">
             <div className="flex justify-between items-center">
               <div>

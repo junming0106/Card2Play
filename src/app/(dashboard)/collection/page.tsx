@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import {
@@ -83,8 +84,8 @@ export default function CollectionPage() {
         const firstPageGames = gameService.getGamesByPage(0, 100);
         setNintendoGames(firstPageGames);
       } catch (error) {
-        console.error('❌ Failed to initialize games:', error);
-        setError('遊戲資料載入失敗');
+        console.error("❌ Failed to initialize games:", error);
+        setError("遊戲資料載入失敗");
       }
     };
 
@@ -148,6 +149,16 @@ export default function CollectionPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-orange-300 flex items-center justify-center px-2 sm:px-4 py-8 sm:py-12">
         <div className="w-full max-w-6xl mx-auto">
+          {/* 回首頁按鈕 */}
+          <div className="mb-4 sm:mb-6">
+            <Link 
+              href="/"
+              className="inline-flex items-center bg-red-500 text-white border-4 border-black px-4 py-2 font-black text-sm sm:text-base hover:bg-red-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
+            >
+              🏠 回首頁
+            </Link>
+          </div>
+
           {/* 頁面標題 */}
           <header className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] !mb-5 sm:!mb-10 transform -rotate-1">
             <div className="text-center">
@@ -175,7 +186,7 @@ export default function CollectionPage() {
             <div className="grid grid-cols-3 gap-4 sm:gap-6 mb-16 sm:mb-20 mt-16 sm:mt-20">
               <div className="bg-green-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-black">
-                  {stats.owned}
+                  {stats.持有中}
                 </div>
                 <div className="font-bold text-green-900 text-xs sm:text-sm">
                   持有中
@@ -183,7 +194,7 @@ export default function CollectionPage() {
               </div>
               <div className="bg-yellow-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-black">
-                  {stats.wanted}
+                  {stats.想要交換}
                 </div>
                 <div className="font-bold text-yellow-900 text-xs sm:text-sm">
                   想要交換
@@ -191,7 +202,7 @@ export default function CollectionPage() {
               </div>
               <div className="bg-blue-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-black">
-                  {stats.completed}
+                  {stats.已借出}
                 </div>
                 <div className="font-bold text-blue-900 text-xs sm:text-sm">
                   已借出
@@ -208,7 +219,8 @@ export default function CollectionPage() {
                 🔍 搜尋遊戲
               </h2>
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
-                從 {gamesCount > 0 ? gamesCount : '...'} 款 Nintendo Switch 遊戲中搜尋
+                從 {gamesCount > 0 ? gamesCount : "..."} 款 Nintendo Switch
+                遊戲中搜尋
               </p>
               <div className="flex-1">
                 <GameSearch
@@ -229,7 +241,7 @@ export default function CollectionPage() {
             {/* 手動新增遊戲 */}
             <div className="bg-pink-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform -rotate-1 min-h-[280px] sm:min-h-[320px] flex flex-col">
               <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">
-                ➕ 自定義遊戲
+                ➕ 手動新增
               </h2>
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 找不到遊戲？手動新增吧！
