@@ -39,7 +39,7 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               管理你的 NINTENDO SWITCH 遊戲卡
             </p>
-            <Link href="/dashboard" className="btn-brutalist inline-block">
+            <Link href="/collection" className="btn-brutalist inline-block">
               編輯卡包
             </Link>
           </div>
@@ -54,7 +54,7 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               查看你的卡片有誰想要交換呢？！
             </p>
-            <Link href="/dashboard" className="btn-brutalist inline-block">
+            <Link href="/collection" className="btn-brutalist inline-block">
               查看清單
             </Link>
           </div>
@@ -69,7 +69,7 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               選擇你想交換的遊戲卡吧！
             </p>
-            <Link href="/dashboard" className="btn-brutalist inline-block">
+            <Link href="/collection" className="btn-brutalist inline-block">
               進入大廳
             </Link>
           </div>
