@@ -11,38 +11,40 @@ interface GameListProps {
   loading?: boolean;
 }
 
-export default function GameList({ collections, onUpdate, loading = false }: GameListProps) {
+export default function GameList({
+  collections,
+  onUpdate,
+  loading = false,
+}: GameListProps) {
   const { user } = useAuth();
-  const [editingGame, setEditingGame] = useState<CollectionItemExtended | null>(null);
+  const [editingGame, setEditingGame] = useState<CollectionItemExtended | null>(
+    null
+  );
   const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'owned':
-        return 'bg-green-400 text-green-900';
-      case 'wanted':
-        return 'bg-yellow-400 text-yellow-900';
-      case 'completed':
-        return 'bg-blue-400 text-blue-900';
-      case 'trading':
-        return 'bg-purple-400 text-purple-900';
+      case "持有中":
+        return "bg-green-400 text-green-900";
+      case "想要交換":
+        return "bg-yellow-400 text-yellow-900";
+      case "已借出":
+        return "bg-blue-400 text-blue-900";
       default:
-        return 'bg-gray-400 text-gray-900';
+        return "bg-gray-400 text-gray-900";
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'owned':
-        return '擁有';
-      case 'wanted':
-        return '想要';
-      case 'completed':
-        return '完成';
-      case 'trading':
-        return '交換';
+      case "持有中":
+        return "持有中";
+      case "想要交換":
+        return "想要交換";
+      case "已借出":
+        return "已借出";
       default:
-        return '未知';
+        return "未知";
     }
   };
 
@@ -103,7 +105,9 @@ export default function GameList({ collections, onUpdate, loading = false }: Gam
     return (
       <div className="text-center p-12">
         <div className="bg-gray-100 border-4 border-gray-400 p-8 transform -rotate-2">
-          <h3 className="text-2xl font-black text-gray-600 mb-4">還沒有收藏任何遊戲</h3>
+          <h3 className="text-2xl font-black text-gray-600 mb-4">
+            還沒有收藏任何遊戲
+          </h3>
           <p className="font-bold text-gray-500">
             開始搜尋或新增您的第一款遊戲吧！
           </p>
@@ -126,7 +130,11 @@ export default function GameList({ collections, onUpdate, loading = false }: Gam
             </h3>
 
             {/* 狀態標籤 */}
-            <div className={`inline-block px-3 py-1 border-2 border-black font-bold text-sm mb-3 ${getStatusColor(item.status)}`}>
+            <div
+              className={`inline-block px-3 py-1 border-2 border-black font-bold text-sm mb-3 ${getStatusColor(
+                item.status
+              )}`}
+            >
               {getStatusText(item.status)}
             </div>
 
@@ -159,7 +167,7 @@ export default function GameList({ collections, onUpdate, loading = false }: Gam
             {/* 自定義遊戲標記 */}
             {item.isCustomGame && (
               <div className="bg-orange-200 border-2 border-orange-400 px-2 py-1 text-xs font-bold text-orange-800 mb-3">
-                🎨 自定義遊戲
+                手動新增
               </div>
             )}
 
@@ -170,14 +178,14 @@ export default function GameList({ collections, onUpdate, loading = false }: Gam
 
             {/* 操作按鈕 */}
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setEditingGame(item)}
                 className="flex-1 bg-blue-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-blue-500 transition-colors"
                 disabled={deletingGameId === item.id}
               >
                 編輯
               </button>
-              <button 
+              <button
                 onClick={() => handleDelete(item.id, item.isCustomGame)}
                 className="flex-1 bg-red-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-red-500 transition-colors disabled:opacity-50"
                 disabled={deletingGameId === item.id}

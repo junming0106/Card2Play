@@ -68,9 +68,13 @@ export async function POST(request: NextRequest) {
     const body: CreateCustomGameRequest = await request.json()
 
     // 驗證必要欄位
-    if (!body.customTitle || !body.platform || !body.media) {
-      return createErrorResponse('缺少必要欄位：遊戲名稱、平台、媒體類型')
+    if (!body.customTitle) {
+      return createErrorResponse('缺少必要欄位：遊戲名稱')
     }
+    
+    // 為 Nintendo Switch 設定預設值
+    const platform = body.platform || "Nintendo Switch"
+    const media = body.media || "實體卡帶"
 
     // 檢查遊戲名稱是否已存在（在用戶的自定義遊戲中）
     const existingTitleSnapshot = await adminDb
@@ -93,8 +97,8 @@ export async function POST(request: NextRequest) {
       customPublisher: body.customPublisher || '未知',
       publisher: body.customPublisher || '未知',
       releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],
-      platform: body.platform,
-      media: body.media,
+      platform: platform,
+      media: media,
       userId: user.uid,
       createdAt: new Date(),
       updatedAt: new Date(),

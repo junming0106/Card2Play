@@ -12,7 +12,7 @@ export interface UserCustomGame {
 }
 
 // 收藏狀態類型
-export type CollectionStatus = 'owned' | 'wanted' | 'completed' | 'trading'
+export type CollectionStatus = '持有中' | '想要交換' | '已借出'
 
 // 擴展的收藏項目類型
 export interface CollectionItemExtended {
@@ -31,10 +31,9 @@ export interface CollectionItemExtended {
 // 收藏統計類型
 export interface CollectionStats {
   total: number
-  owned: number
-  wanted: number
-  completed: number
-  trading: number
+  持有中: number
+  想要交換: number
+  已借出: number
   customGames: number
 }
 
@@ -58,7 +57,11 @@ export interface UpdateCollectionRequest {
 
 // 創建自定義遊戲請求類型
 export interface CreateCustomGameRequest {
-  title: string
+  customTitle: string
+  platform?: string
+  media?: string
+  customPublisher?: string
+  releaseDate?: string
 }
 
 // 遊戲搜尋參數類型

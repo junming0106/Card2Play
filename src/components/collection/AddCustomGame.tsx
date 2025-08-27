@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { CollectionStatus } from "@/types/collection";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 interface AddCustomGameProps {
@@ -12,6 +13,9 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [gameTitle, setGameTitle] = useState("");
+  const [status, setStatus] = useState<CollectionStatus>("持有中");
+  const [rating, setRating] = useState<number | undefined>(undefined);
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -32,22 +36,44 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
     setError("");
 
     try {
-      const response = await fetch("/api/custom-games", {
+      // 生成唯一的遊戲 ID
+      const customGameId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // 直接新增到收藏
+      const response = await fetch("/api/collections", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${await user.getIdToken()}`,
         },
-        body: JSON.stringify({ title: gameTitle.trim() }),
+        body: JSON.stringify({
+          gameId: customGameId,
+          gameTitle: gameTitle.trim(),
+          status: status,
+          rating: rating || null,
+          notes: notes.trim() || null,
+          isCustomGame: true,
+          customGameData: {
+            id: customGameId,
+            title: gameTitle.trim(),
+            customTitle: gameTitle.trim(),
+            platform: "Nintendo Switch",
+            media: "實體卡帶",
+            isCustom: true
+          }
+        }),
       });
 
       if (response.ok) {
         onSuccess();
         setIsModalOpen(false);
         setGameTitle("");
+        setStatus("持有中");
+        setRating(undefined);
+        setNotes("");
       } else {
         const result = await response.json();
-        setError(result.message || "新增失敗");
+        setError(result.error || result.message || "新增失敗");
       }
     } catch (error) {
       setError("網路錯誤，請稍後再試");
@@ -124,6 +150,81 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
                     disabled={loading}
                     required
                   />
+                </div>
+
+                {/* 收藏狀態 */}
+                <div className="mb-4">
+                  <label className="block font-black text-base sm:text-lg mb-2">收藏狀態</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "持有中", label: "持有中", color: "bg-green-400" },
+                      { value: "想要交換", label: "想要交換", color: "bg-yellow-400" },
+                      { value: "已借出", label: "已借出", color: "bg-blue-400" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setStatus(option.value as CollectionStatus)}
+                        className={`p-2 sm:p-3 border-2 sm:border-4 border-black font-bold transition-all text-sm sm:text-base ${
+                          status === option.value 
+                            ? `${option.color} transform scale-105` 
+                            : "bg-white hover:bg-gray-100"
+                        }`}
+                        disabled={loading}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 評分 */}
+                <div className="mb-4">
+                  <label className="block font-black text-base sm:text-lg mb-2">評分（可選）</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRating(undefined)}
+                      className={`px-2 sm:px-3 py-1 sm:py-2 border-2 sm:border-4 border-black font-bold text-sm sm:text-base ${
+                        rating === undefined ? "bg-gray-400" : "bg-white hover:bg-gray-100"
+                      }`}
+                      disabled={loading}
+                    >
+                      無評分
+                    </button>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className={`px-2 sm:px-3 py-1 sm:py-2 border-2 sm:border-4 border-black font-bold text-sm sm:text-base ${
+                          rating === star 
+                            ? "bg-yellow-400 text-yellow-900" 
+                            : "bg-white hover:bg-gray-100"
+                        }`}
+                        disabled={loading}
+                      >
+                        {star}★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 備註 */}
+                <div className="mb-6">
+                  <label className="block font-black text-base sm:text-lg mb-2">備註（可選）</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="寫下您對這款遊戲的想法..."
+                    className="w-full p-2 sm:p-3 border-2 sm:border-4 border-black font-bold placeholder-gray-500 resize-none text-sm sm:text-base"
+                    rows={3}
+                    maxLength={200}
+                    disabled={loading}
+                  />
+                  <div className="text-right text-xs sm:text-sm font-bold text-gray-500 mt-1">
+                    {notes.length}/200
+                  </div>
                 </div>
 
                 {/* 操作按鈕 */}
