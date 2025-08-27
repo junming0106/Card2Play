@@ -1,27 +1,14 @@
-// Nintendo Switch 遊戲資料類型
-export interface NintendoSwitchGame {
-  id: string
-  title: string
-  titleCn?: string
-  titleEn?: string
-  publisher: string
-  releaseDate: string
-  genre?: string[]
-  esrbRating?: string
-  platform: string
-  media: 'package' | 'eshop'
-  imageUrl?: string
-}
+// Nintendo Switch 遊戲資料類型 (現在只是遊戲名稱字串)
+export type NintendoSwitchGame = string
 
 // 用戶自定義遊戲類型
-export interface UserCustomGame extends Omit<NintendoSwitchGame, 'id' | 'genre' | 'esrbRating' | 'imageUrl'> {
+export interface UserCustomGame {
   id: string
   userId: string
+  title: string
   createdAt: Date
   updatedAt: Date
   isCustom: true
-  customTitle: string
-  customPublisher?: string
 }
 
 // 收藏狀態類型
@@ -39,7 +26,6 @@ export interface CollectionItemExtended {
   updatedAt: Date
   isCustomGame: boolean
   customGameData?: UserCustomGame
-  gameData?: NintendoSwitchGame
 }
 
 // 收藏統計類型
@@ -72,20 +58,12 @@ export interface UpdateCollectionRequest {
 
 // 創建自定義遊戲請求類型
 export interface CreateCustomGameRequest {
-  customTitle: string
-  customPublisher?: string
-  releaseDate?: string
-  platform: string
-  media: 'package' | 'eshop'
+  title: string
 }
 
 // 遊戲搜尋參數類型
 export interface GameSearchParams {
   search?: string
-  publisher?: string
-  genre?: string
-  platform?: string
-  media?: 'package' | 'eshop'
 }
 
 // 收藏過濾參數類型

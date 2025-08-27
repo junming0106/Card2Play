@@ -11,7 +11,12 @@ interface EditGameModalProps {
   onSuccess: () => void;
 }
 
-export default function EditGameModal({ game, isOpen, onClose, onSuccess }: EditGameModalProps) {
+export default function EditGameModal({
+  game,
+  isOpen,
+  onClose,
+  onSuccess,
+}: EditGameModalProps) {
   const { user } = useAuth();
   const [status, setStatus] = useState<CollectionStatus>(game.status);
   const [rating, setRating] = useState<number | undefined>(game.rating);
@@ -81,9 +86,7 @@ export default function EditGameModal({ game, isOpen, onClose, onSuccess }: Edit
 
           {/* 遊戲資訊 */}
           <div className="bg-gray-100 border-4 border-gray-400 p-4 mb-6 transform rotate-1">
-            <div className="font-black text-lg mb-2">
-              {game.gameTitle}
-            </div>
+            <div className="font-black text-lg mb-2">{game.gameTitle}</div>
             <div className="flex gap-2 text-sm font-bold text-gray-600">
               {game.isCustomGame && (
                 <>
@@ -108,20 +111,19 @@ export default function EditGameModal({ game, isOpen, onClose, onSuccess }: Edit
             {/* 收藏狀態 */}
             <div className="mb-4">
               <label className="block font-black text-lg mb-2">收藏狀態</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: "owned", label: "擁有", color: "bg-green-400" },
-                  { value: "wanted", label: "想要", color: "bg-yellow-400" },
-                  { value: "completed", label: "完成", color: "bg-blue-400" },
-                  { value: "trading", label: "交換", color: "bg-purple-400" },
+                  { value: "owned", label: "持有中", color: "bg-green-400" },
+                  { value: "wanted", label: "想要交換", color: "bg-yellow-400" },
+                  { value: "completed", label: "已借出", color: "bg-blue-400" },
                 ].map((option) => (
                   <button
                     key={option.value}
                     type="button"
                     onClick={() => setStatus(option.value as CollectionStatus)}
                     className={`p-3 border-4 border-black font-bold transition-all ${
-                      status === option.value 
-                        ? `${option.color} transform scale-105` 
+                      status === option.value
+                        ? `${option.color} transform scale-105`
                         : "bg-white hover:bg-gray-100"
                     }`}
                   >
@@ -139,7 +141,9 @@ export default function EditGameModal({ game, isOpen, onClose, onSuccess }: Edit
                   type="button"
                   onClick={() => setRating(undefined)}
                   className={`px-3 py-2 border-4 border-black font-bold ${
-                    rating === undefined ? "bg-gray-400" : "bg-white hover:bg-gray-100"
+                    rating === undefined
+                      ? "bg-gray-400"
+                      : "bg-white hover:bg-gray-100"
                   }`}
                 >
                   無評分
@@ -150,8 +154,8 @@ export default function EditGameModal({ game, isOpen, onClose, onSuccess }: Edit
                     type="button"
                     onClick={() => setRating(star)}
                     className={`px-3 py-2 border-4 border-black font-bold ${
-                      rating === star 
-                        ? "bg-yellow-400 text-yellow-900" 
+                      rating === star
+                        ? "bg-yellow-400 text-yellow-900"
                         : "bg-white hover:bg-gray-100"
                     }`}
                   >

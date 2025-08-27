@@ -34,8 +34,8 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
           Authorization: `Bearer ${await user.getIdToken()}`,
         },
         body: JSON.stringify({
-          gameId: game.id,
-          gameTitle: game.titleCn || game.title,
+          gameId: game,
+          gameTitle: game,
           status,
           rating: rating || undefined,
           notes: notes.trim() || undefined,
@@ -90,21 +90,10 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
           {/* 遊戲資訊 */}
           <div className="bg-gray-100 border-4 border-gray-400 p-4 mb-6 transform -rotate-1">
             <div className="font-black text-lg mb-2">
-              {game.titleCn || game.title}
+              {game}
             </div>
-            {game.titleCn && game.title !== game.titleCn && (
-              <div className="text-sm font-bold text-gray-600 mb-1">
-                {game.title}
-              </div>
-            )}
-            <div className="flex gap-2 text-sm font-bold text-gray-600">
-              <span>{game.publisher}</span>
-              <span>•</span>
-              <span>{game.releaseDate}</span>
-              <span>•</span>
-              <span className={game.media === 'package' ? 'text-orange-600' : 'text-purple-600'}>
-                {game.media === 'package' ? '實體版' : '數位版'}
-              </span>
+            <div className="text-sm font-bold text-gray-600">
+              Nintendo Switch 遊戲
             </div>
           </div>
 
@@ -120,12 +109,11 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
             {/* 收藏狀態 */}
             <div className="mb-4">
               <label className="block font-black text-lg mb-2">收藏狀態</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: "owned", label: "擁有", color: "bg-green-400" },
-                  { value: "wanted", label: "想要", color: "bg-yellow-400" },
-                  { value: "completed", label: "完成", color: "bg-blue-400" },
-                  { value: "trading", label: "交換", color: "bg-purple-400" },
+                  { value: "owned", label: "持有中", color: "bg-green-400" },
+                  { value: "wanted", label: "想要交換", color: "bg-yellow-400" },
+                  { value: "completed", label: "已借出", color: "bg-blue-400" },
                 ].map((option) => (
                   <button
                     key={option.value}

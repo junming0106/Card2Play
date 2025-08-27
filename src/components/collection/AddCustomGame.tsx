@@ -11,29 +11,19 @@ interface AddCustomGameProps {
 export default function AddCustomGame({ onSuccess, disabled = false }: AddCustomGameProps) {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    customTitle: "",
-    customPublisher: "",
-    releaseDate: "",
-    platform: "Nintendo Switch",
-    media: "package" as "package" | "eshop",
-  });
+  const [gameTitle, setGameTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGameTitle(e.target.value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
-    if (!formData.customTitle.trim()) {
+    if (!gameTitle.trim()) {
       setError("請輸入遊戲名稱");
       return;
     }
@@ -48,20 +38,13 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
           "Content-Type": "application/json",
           Authorization: `Bearer ${await user.getIdToken()}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ title: gameTitle.trim() }),
       });
 
       if (response.ok) {
         onSuccess();
         setIsModalOpen(false);
-        // 重置表單
-        setFormData({
-          customTitle: "",
-          customPublisher: "",
-          releaseDate: "",
-          platform: "Nintendo Switch",
-          media: "package",
-        });
+        setGameTitle("");
       } else {
         const result = await response.json();
         setError(result.message || "新增失敗");
@@ -127,14 +110,13 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
               {/* 新增表單 */}
               <form onSubmit={handleSubmit}>
                 {/* 遊戲名稱 */}
-                <div className="mb-4">
+                <div className="mb-6">
                   <label className="block font-black text-base sm:text-lg mb-2">
                     遊戲名稱 <span className="text-red-600">*</span>
                   </label>
                   <input
                     type="text"
-                    name="customTitle"
-                    value={formData.customTitle}
+                    value={gameTitle}
                     onChange={handleInputChange}
                     placeholder="輸入遊戲名稱"
                     className="w-full p-2 sm:p-3 border-2 sm:border-4 border-black font-bold placeholder-gray-500 text-sm sm:text-base"
@@ -142,85 +124,6 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
                     disabled={loading}
                     required
                   />
-                </div>
-
-                {/* 發行商 */}
-                <div className="mb-4">
-                  <label className="block font-black text-base sm:text-lg mb-2">發行商</label>
-                  <input
-                    type="text"
-                    name="customPublisher"
-                    value={formData.customPublisher}
-                    onChange={handleInputChange}
-                    placeholder="輸入發行商（可選）"
-                    className="w-full p-2 sm:p-3 border-2 sm:border-4 border-black font-bold placeholder-gray-500 text-sm sm:text-base"
-                    maxLength={50}
-                    disabled={loading}
-                  />
-                </div>
-
-                {/* 發售日期 */}
-                <div className="mb-4">
-                  <label className="block font-black text-base sm:text-lg mb-2">發售日期</label>
-                  <input
-                    type="date"
-                    name="releaseDate"
-                    value={formData.releaseDate}
-                    onChange={handleInputChange}
-                    className="w-full p-2 sm:p-3 border-2 sm:border-4 border-black font-bold text-sm sm:text-base"
-                    disabled={loading}
-                  />
-                </div>
-
-                {/* 平台 */}
-                <div className="mb-4">
-                  <label className="block font-black text-base sm:text-lg mb-2">平台</label>
-                  <select
-                    name="platform"
-                    value={formData.platform}
-                    onChange={handleInputChange}
-                    className="w-full p-2 sm:p-3 border-2 sm:border-4 border-black font-bold text-sm sm:text-base"
-                    disabled={loading}
-                  >
-                    <option value="Nintendo Switch">Nintendo Switch</option>
-                    <option value="PlayStation 5">PlayStation 5</option>
-                    <option value="PlayStation 4">PlayStation 4</option>
-                    <option value="Xbox Series X/S">Xbox Series X/S</option>
-                    <option value="Xbox One">Xbox One</option>
-                    <option value="PC">PC</option>
-                    <option value="其他">其他</option>
-                  </select>
-                </div>
-
-                {/* 媒體類型 */}
-                <div className="mb-6">
-                  <label className="block font-black text-base sm:text-lg mb-2">媒體類型</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, media: "package" }))}
-                      className={`p-2 sm:p-3 border-2 sm:border-4 border-black font-bold transition-all text-sm sm:text-base ${
-                        formData.media === "package" 
-                          ? "bg-orange-400 text-orange-900 transform scale-105" 
-                          : "bg-white hover:bg-gray-100"
-                      }`}
-                      disabled={loading}
-                    >
-                      📦 實體版
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, media: "eshop" }))}
-                      className={`p-2 sm:p-3 border-2 sm:border-4 border-black font-bold transition-all text-sm sm:text-base ${
-                        formData.media === "eshop" 
-                          ? "bg-purple-400 text-purple-900 transform scale-105" 
-                          : "bg-white hover:bg-gray-100"
-                      }`}
-                      disabled={loading}
-                    >
-                      💿 數位版
-                    </button>
-                  </div>
                 </div>
 
                 {/* 操作按鈕 */}
@@ -236,7 +139,7 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
                   <button
                     type="submit"
                     className="flex-1 bg-pink-500 text-white border-2 sm:border-4 border-black px-3 sm:px-4 py-2 sm:py-3 font-black hover:bg-pink-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
-                    disabled={loading || !formData.customTitle.trim()}
+                    disabled={loading || !gameTitle.trim()}
                   >
                     {loading ? "新增中..." : "新增遊戲"}
                   </button>

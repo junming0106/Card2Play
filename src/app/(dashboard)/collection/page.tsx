@@ -8,7 +8,7 @@ import {
   CollectionItemExtended,
   NintendoSwitchGame,
 } from "@/types/collection";
-import nintendoGamesData from "@/data/nintendo-switch-games.json";
+import GameDataService from "@/lib/services/gameDataService";
 
 // 導入組件
 import GameSearch from "@/components/collection/GameSearch";
@@ -20,9 +20,9 @@ export default function CollectionPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<CollectionStats | null>(null);
   const [collections, setCollections] = useState<CollectionItemExtended[]>([]);
-  const [nintendoGames] = useState<NintendoSwitchGame[]>(
-    nintendoGamesData as NintendoSwitchGame[]
-  );
+  const [nintendoGames, setNintendoGames] = useState<NintendoSwitchGame[]>([]);
+  const [gamesCount, setGamesCount] = useState(0);
+  const [gameService] = useState(() => GameDataService.getInstance());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedGame, setSelectedGame] = useState<NintendoSwitchGame | null>(
@@ -72,6 +72,24 @@ export default function CollectionPage() {
       setLoading(false);
     }
   };
+
+  // 初始化遊戲資料服務
+  useEffect(() => {
+    const initializeGames = async () => {
+      try {
+        await gameService.loadGames();
+        setGamesCount(gameService.getGamesCount());
+        // 可以選擇性載入第一頁遊戲來預熱
+        const firstPageGames = gameService.getGamesByPage(0, 100);
+        setNintendoGames(firstPageGames);
+      } catch (error) {
+        console.error('❌ Failed to initialize games:', error);
+        setError('遊戲資料載入失敗');
+      }
+    };
+
+    initializeGames();
+  }, [gameService]);
 
   useEffect(() => {
     if (user) {
@@ -173,10 +191,10 @@ export default function CollectionPage() {
               </div>
               <div className="bg-blue-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-black">
-                  {stats.total}
+                  {stats.completed}
                 </div>
                 <div className="font-bold text-blue-900 text-xs sm:text-sm">
-                  總收藏
+                  已借出
                 </div>
               </div>
             </div>
@@ -190,7 +208,7 @@ export default function CollectionPage() {
                 🔍 搜尋遊戲
               </h2>
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
-                從 {nintendoGames.length} 款 Nintendo Switch 遊戲中搜尋
+                從 {gamesCount > 0 ? gamesCount : '...'} 款 Nintendo Switch 遊戲中搜尋
               </p>
               <div className="flex-1">
                 <GameSearch
