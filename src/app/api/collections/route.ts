@@ -18,65 +18,32 @@ import {
 // GET /api/collections - 取得用戶收藏
 export async function GET(request: NextRequest) {
   try {
+    console.log('📖 開始讀取用戶收藏...')
+    
     const user = await verifyAuthToken(request)
     if (!user) {
+      console.log('❌ 讀取收藏：身份驗證失敗')
       return createErrorResponse('未經授權', 401)
     }
 
-    const { search, sortBy = 'addedAt', sortOrder = 'desc' } = getSearchParams(request)
-    const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status') as CollectionStatus | null
-    const rating = searchParams.get('rating') ? parseInt(searchParams.get('rating')!) : null
-    const isCustomGame = searchParams.get('isCustomGame') === 'true'
+    console.log('✅ 身份驗證成功，讀取用戶收藏:', user.uid)
 
-    // 建立查詢
-    let collectionRef = adminDb.collection(`collections/${user.uid}/games`)
-    
-    // 建立查詢條件陣列
-    const queryFilters = []
-    
-    // 狀態過濾
-    if (status) {
-      queryFilters.push(['status', '==', status])
-    }
+    const collectionsSnapshot = await adminDb
+      .collection(`collections/${user.uid}/games`)
+      .orderBy('addedAt', 'desc')
+      .get()
 
-    // 評分過濾
-    if (rating) {
-      queryFilters.push(['rating', '==', rating])
-    }
-
-    // 自定義遊戲過濾
-    if (isCustomGame !== null) {
-      queryFilters.push(['isCustomGame', '==', isCustomGame])
-    }
-
-    // 搜尋過濾 (搜尋遊戲標題)
-    if (search) {
-      queryFilters.push(['gameTitle', '>=', search])
-      queryFilters.push(['gameTitle', '<=', search + '\uf8ff'])
-    }
-    
-    // 套用所有過濾條件
-    let query = collectionRef as any
-    for (const [field, operator, value] of queryFilters) {
-      query = query.where(field, operator, value)
-    }
-    
-    // 排序
-    const collectionQuery = query.orderBy(sortBy, sortOrder)
-
-    const snapshot = await collectionQuery.get()
-    const collections: CollectionItemExtended[] = snapshot.docs.map((doc: any) => ({
-      id: doc.id,
+    const collections: CollectionItemExtended[] = collectionsSnapshot.docs.map(doc => ({
       ...doc.data(),
       addedAt: doc.data().addedAt.toDate(),
       updatedAt: doc.data().updatedAt.toDate(),
     })) as CollectionItemExtended[]
 
+    console.log('✅ 成功讀取', collections.length, '個收藏項目')
     return createSuccessResponse(collections)
 
   } catch (error) {
-    console.error('Error fetching collections:', error)
+    console.error('💥 讀取收藏錯誤:', error)
     return createErrorResponse('無法取得收藏列表', 500)
   }
 }
@@ -84,60 +51,89 @@ export async function GET(request: NextRequest) {
 // POST /api/collections - 新增到收藏
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyAuthToken(request)
-    if (!user) {
-      return createErrorResponse('未經授權', 401)
-    }
-
+    console.log('🎯 API 呼叫開始')
+    
+    // 先測試基本請求解析
     const body: AddToCollectionRequest = await request.json()
+    console.log('📦 收到的請求資料:', JSON.stringify(body, null, 2))
 
     // 驗證必要欄位
     if (!body.gameId || !body.gameTitle || !body.status) {
+      console.log('❌ 缺少必要欄位:', { gameId: !!body.gameId, gameTitle: !!body.gameTitle, status: !!body.status })
       return createErrorResponse('缺少必要欄位')
     }
 
-    if (!['owned', 'wanted', 'completed', 'trading'].includes(body.status)) {
-      return createErrorResponse('無效的收藏狀態')
+    if (!['持有中', '想要交換', '已借出'].includes(body.status)) {
+      console.log('❌ 無效的收藏狀態:', body.status)
+      return createErrorResponse(`無效的收藏狀態: ${body.status}`)
     }
 
+    console.log('✅ 基本驗證通過')
+
+    // 暫時跳過身份驗證測試
+    console.log('🔐 開始身份驗證...')
+    const user = await verifyAuthToken(request)
+    if (!user) {
+      console.log('❌ 身份驗證失敗')
+      return createErrorResponse('未經授權', 401)
+    }
+    console.log('✅ 身份驗證成功，用戶 UID:', user.uid)
+
     // 檢查收藏數量限制（最多5個）
+    console.log('📊 檢查收藏數量限制...')
     const existingCollectionSnapshot = await adminDb
       .collection(`collections/${user.uid}/games`)
       .get()
+    
+    console.log('📊 目前收藏數量:', existingCollectionSnapshot.size)
 
     if (existingCollectionSnapshot.size >= 5) {
+      console.log('❌ 已達收藏上限')
       return createErrorResponse('每位用戶最多只能收藏 5 個遊戲', 400)
     }
 
     // 驗證評分範圍
     if (body.rating !== undefined && (body.rating < 1 || body.rating > 5)) {
+      console.log('❌ 無效評分:', body.rating)
       return createErrorResponse('評分必須在 1-5 之間')
     }
 
-    const collectionData: CollectionItemExtended = {
+    // 過濾掉 null 值，避免 Firestore 錯誤
+    const collectionData: any = {
       id: body.gameId,
       gameId: body.gameId,
       gameTitle: body.gameTitle,
       status: body.status,
-      rating: body.rating,
-      notes: body.notes,
       isCustomGame: body.isCustomGame || false,
-      customGameData: body.customGameData as UserCustomGame | undefined,
       addedAt: new Date(),
       updatedAt: new Date(),
     }
 
-    // 使用 gameId 作為文檔 ID 來避免重複收藏
+    // 只有當值不為 null 時才加入
+    if (body.rating !== null && body.rating !== undefined) {
+      collectionData.rating = body.rating
+    }
+    if (body.notes !== null && body.notes !== undefined && body.notes !== '') {
+      collectionData.notes = body.notes
+    }
+    if (body.customGameData) {
+      collectionData.customGameData = body.customGameData
+    }
+
+    // 寫入 Firestore
+    console.log('💾 開始寫入 Firestore...')
     await adminDb
       .collection(`collections/${user.uid}/games`)
       .doc(body.gameId)
       .set(collectionData, { merge: true })
 
+    console.log('✅ API 呼叫成功完成，遊戲已新增至收藏')
     return createSuccessResponse(collectionData, '已新增至收藏')
 
   } catch (error) {
-    console.error('Error adding to collection:', error)
-    return createErrorResponse('無法新增至收藏', 500)
+    console.error('💥 API 錯誤詳情:', error)
+    console.error('💥 錯誤堆疊:', (error as Error).stack)
+    return createErrorResponse(`無法新增至收藏: ${(error as Error).message}`, 500)
   }
 }
 
@@ -188,7 +184,7 @@ export async function PUT(request: NextRequest) {
     const body: UpdateCollectionRequest = await request.json()
 
     // 驗證狀態值
-    if (body.status && !['owned', 'wanted', 'completed', 'trading'].includes(body.status)) {
+    if (body.status && !['持有中', '想要交換', '已借出'].includes(body.status)) {
       return createErrorResponse('無效的收藏狀態')
     }
 

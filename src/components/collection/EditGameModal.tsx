@@ -40,8 +40,8 @@ export default function EditGameModal({
         },
         body: JSON.stringify({
           status,
-          rating: rating || undefined,
-          notes: notes.trim() || undefined,
+          rating: rating || null,
+          notes: notes.trim() || null,
         }),
       });
 
@@ -113,9 +113,9 @@ export default function EditGameModal({
               <label className="block font-black text-lg mb-2">收藏狀態</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: "owned", label: "持有中", color: "bg-green-400" },
-                  { value: "wanted", label: "想要交換", color: "bg-yellow-400" },
-                  { value: "completed", label: "已借出", color: "bg-blue-400" },
+                  { value: "持有中", label: "持有中", color: "bg-green-400" },
+                  { value: "想要交換", label: "想要交換", color: "bg-yellow-400" },
+                  { value: "已借出", label: "已借出", color: "bg-blue-400" },
                 ].map((option) => (
                   <button
                     key={option.value}

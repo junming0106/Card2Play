@@ -13,7 +13,7 @@ interface AddGameModalProps {
 
 export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGameModalProps) {
   const { user } = useAuth();
-  const [status, setStatus] = useState<CollectionStatus>("owned");
+  const [status, setStatus] = useState<CollectionStatus>("持有中");
   const [rating, setRating] = useState<number | undefined>(undefined);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,38 +21,61 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    console.log('🎮 開始新增遊戲流程...');
+    console.log('👤 用戶狀態:', user ? `已登入 (${user.uid})` : '未登入');
+    
+    if (!user) {
+      console.log('❌ 用戶未登入，無法繼續');
+      setError("請先登入才能新增遊戲");
+      return;
+    }
 
     setLoading(true);
     setError("");
 
     try {
+      const idToken = await user.getIdToken();
+      console.log('🎫 取得 ID Token，長度:', idToken.length);
+      console.log('📤 準備發送請求資料:', {
+        gameId: game,
+        gameTitle: game,
+        status,
+        rating: rating || null,
+        notes: notes.trim() || null,
+        isCustomGame: false,
+      });
+
       const response = await fetch("/api/collections", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${await user.getIdToken()}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           gameId: game,
           gameTitle: game,
           status,
-          rating: rating || undefined,
-          notes: notes.trim() || undefined,
+          rating: rating || null,
+          notes: notes.trim() || null,
           isCustomGame: false,
         }),
       });
 
+      console.log('📥 收到回應狀態:', response.status);
+      
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ 新增成功:', result);
         onSuccess();
         onClose();
         // 重置表單
-        setStatus("owned");
+        setStatus("持有中");
         setRating(undefined);
         setNotes("");
       } else {
         const result = await response.json();
-        setError(result.message || "新增失敗");
+        console.log('❌ 新增失敗:', result);
+        setError(result.error || result.message || "新增失敗");
       }
     } catch (error) {
       setError("網路錯誤，請稍後再試");
@@ -111,9 +134,9 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
               <label className="block font-black text-lg mb-2">收藏狀態</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: "owned", label: "持有中", color: "bg-green-400" },
-                  { value: "wanted", label: "想要交換", color: "bg-yellow-400" },
-                  { value: "completed", label: "已借出", color: "bg-blue-400" },
+                  { value: "持有中", label: "持有中", color: "bg-green-400" },
+                  { value: "想要交換", label: "想要交換", color: "bg-yellow-400" },
+                  { value: "已借出", label: "已借出", color: "bg-blue-400" },
                 ].map((option) => (
                   <button
                     key={option.value}
