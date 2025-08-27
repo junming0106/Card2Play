@@ -3,7 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { CollectionStats, CollectionItemExtended, NintendoSwitchGame } from "@/types/collection";
+import {
+  CollectionStats,
+  CollectionItemExtended,
+  NintendoSwitchGame,
+} from "@/types/collection";
 import nintendoGamesData from "@/data/nintendo-switch-games.json";
 
 // 導入組件
@@ -16,10 +20,14 @@ export default function CollectionPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<CollectionStats | null>(null);
   const [collections, setCollections] = useState<CollectionItemExtended[]>([]);
-  const [nintendoGames] = useState<NintendoSwitchGame[]>(nintendoGamesData as NintendoSwitchGame[]);
+  const [nintendoGames] = useState<NintendoSwitchGame[]>(
+    nintendoGamesData as NintendoSwitchGame[]
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedGame, setSelectedGame] = useState<NintendoSwitchGame | null>(null);
+  const [selectedGame, setSelectedGame] = useState<NintendoSwitchGame | null>(
+    null
+  );
   const [showAddGameModal, setShowAddGameModal] = useState(false);
 
   // 載入收藏統計
@@ -120,10 +128,10 @@ export default function CollectionPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-orange-300 p-2 sm:p-4 pb-8 sm:pb-12 lg:flex lg:items-start lg:justify-center">
-        <div className="w-full max-w-6xl mx-auto lg:mt-8 mb-8">
+      <div className="min-h-screen bg-orange-300 flex items-center justify-center px-2 sm:px-4 py-8 sm:py-12">
+        <div className="w-full max-w-6xl mx-auto">
           {/* 頁面標題 */}
-          <header className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] mb-4 sm:mb-8 transform -rotate-1">
+          <header className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] !mb-5 sm:!mb-10 transform -rotate-1">
             <div className="text-center">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-black mb-2">
                 🎮 我的遊戲收藏
@@ -146,35 +154,41 @@ export default function CollectionPage() {
 
           {/* 統計面板 */}
           {stats && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 mb-4 sm:mb-8">
-              <div className="bg-green-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.owned}</div>
-                <div className="font-bold text-green-900 text-xs sm:text-sm">擁有</div>
+            <div className="grid grid-cols-3 gap-4 sm:gap-6 mb-16 sm:mb-20 mt-16 sm:mt-20">
+              <div className="bg-green-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">
+                  {stats.owned}
+                </div>
+                <div className="font-bold text-green-900 text-xs sm:text-sm">
+                  持有中
+                </div>
               </div>
-              <div className="bg-yellow-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.wanted}</div>
-                <div className="font-bold text-yellow-900 text-xs sm:text-sm">想要</div>
+              <div className="bg-yellow-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">
+                  {stats.wanted}
+                </div>
+                <div className="font-bold text-yellow-900 text-xs sm:text-sm">
+                  想要交換
+                </div>
               </div>
-              <div className="bg-blue-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.completed}</div>
-                <div className="font-bold text-blue-900 text-xs sm:text-sm">完成</div>
-              </div>
-              <div className="bg-purple-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.trading}</div>
-                <div className="font-bold text-purple-900 text-xs sm:text-sm">交換</div>
-              </div>
-              <div className="bg-pink-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform col-span-2 sm:col-span-1">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-black">{stats.customGames}</div>
-                <div className="font-bold text-pink-900 text-xs sm:text-sm">自定義</div>
+              <div className="bg-blue-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-black">
+                  {stats.total}
+                </div>
+                <div className="font-bold text-blue-900 text-xs sm:text-sm">
+                  總收藏
+                </div>
               </div>
             </div>
           )}
 
           {/* 新增遊戲區域 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-8 sm:mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-16 sm:mb-20">
             {/* 搜尋 Nintendo Switch 遊戲 */}
             <div className="bg-cyan-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform rotate-1 min-h-[280px] sm:min-h-[320px] flex flex-col">
-              <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">🔍 搜尋遊戲</h2>
+              <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">
+                🔍 搜尋遊戲
+              </h2>
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 從 {nintendoGames.length} 款 Nintendo Switch 遊戲中搜尋
               </p>
@@ -196,7 +210,9 @@ export default function CollectionPage() {
 
             {/* 手動新增遊戲 */}
             <div className="bg-pink-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform -rotate-1 min-h-[280px] sm:min-h-[320px] flex flex-col">
-              <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">➕ 自定義遊戲</h2>
+              <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">
+                ➕ 自定義遊戲
+              </h2>
               <p className="font-bold text-gray-700 mb-3 sm:mb-4 text-center text-sm sm:text-base">
                 找不到遊戲？手動新增吧！
               </p>
@@ -217,8 +233,10 @@ export default function CollectionPage() {
           </div>
 
           {/* 我的遊戲列表 */}
-          <div className="bg-white border-4 sm:border-8 border-black p-4 sm:p-8 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] transform rotate-1">
-            <h2 className="text-2xl sm:text-3xl font-black mb-6 sm:mb-8 text-center">📚 我的遊戲列表</h2>
+          <div className="bg-white border-4 sm:border-8 border-black p-4 sm:p-8 shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] transform rotate-1 mt-8 sm:mt-12">
+            <h2 className="text-2xl sm:text-3xl font-black mb-6 sm:mb-8 text-center">
+              📚 我的遊戲列表
+            </h2>
             <GameList
               collections={collections}
               onUpdate={handleUpdate}
