@@ -79,8 +79,9 @@ export async function GET(request: NextRequest) {
           const gameData = gameDoc.data()
           
           // 檢查是否是用戶想要的遊戲
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const matchedWantedGame = userWantedGames.find(
-            wantedGame => wantedGame.gameTitle === gameData.gameTitle
+            wantedGame => (wantedGame as any).gameTitle === (gameData as any).gameTitle
           )
           
           if (matchedWantedGame) {
@@ -91,20 +92,24 @@ export async function GET(request: NextRequest) {
                 const userRecord = await adminAuth.getUser(otherUserId)
                 playerEmail = userRecord.email || playerEmail
               } catch (authError) {
-                console.log('無法獲取用戶信息:', otherUserId)
+                console.log('無法獲取用戶信息:', otherUserId, authError)
               }
 
               matches.push({
                 playerId: otherUserId,
                 playerEmail: playerEmail,
-                gameTitle: gameData.gameTitle,
-                matchedGame: matchedWantedGame.gameTitle
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                gameTitle: (gameData as any).gameTitle,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                matchedGame: (matchedWantedGame as any).gameTitle
               })
 
               console.log('✅ 找到配對:', {
                 player: playerEmail,
-                has: gameData.gameTitle,
-                wants: matchedWantedGame.gameTitle
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                has: (gameData as any).gameTitle,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                wants: (matchedWantedGame as any).gameTitle
               })
 
             } catch (error) {

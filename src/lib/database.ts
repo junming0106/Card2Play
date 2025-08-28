@@ -149,15 +149,24 @@ export async function findGameByTitle(title: string) {
 // 用戶遊戲關聯查詢
 export async function getUserGames(userId: number, status?: 'owned' | 'wanted') {
   try {
-    const statusFilter = status ? sql`AND ug.status = ${status}` : sql``;
-    
-    const result = await sql`
-      SELECT ug.*, g.title, g.publisher, g.image_url, g.custom_title, g.custom_publisher, g.is_custom
-      FROM user_games ug
-      JOIN games g ON ug.game_id = g.id
-      WHERE ug.user_id = ${userId} ${statusFilter}
-      ORDER BY ug.created_at DESC
-    `;
+    let result;
+    if (status) {
+      result = await sql`
+        SELECT ug.*, g.title, g.publisher, g.image_url, g.custom_title, g.custom_publisher, g.is_custom
+        FROM user_games ug
+        JOIN games g ON ug.game_id = g.id
+        WHERE ug.user_id = ${userId} AND ug.status = ${status}
+        ORDER BY ug.created_at DESC
+      `;
+    } else {
+      result = await sql`
+        SELECT ug.*, g.title, g.publisher, g.image_url, g.custom_title, g.custom_publisher, g.is_custom
+        FROM user_games ug
+        JOIN games g ON ug.game_id = g.id
+        WHERE ug.user_id = ${userId}
+        ORDER BY ug.created_at DESC
+      `;
+    }
     return result.rows;
   } catch (error) {
     console.error('❌ 用戶遊戲查詢失敗:', error);

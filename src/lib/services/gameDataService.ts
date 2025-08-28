@@ -127,7 +127,7 @@ class GameDataService {
     });
 
     // 4. 前綴匹配
-    for (const [indexKey, indices] of this.searchIndex) {
+    for (const [indexKey, indices] of Array.from(this.searchIndex)) {
       if (indexKey.startsWith(lowerTerm)) {
         indices.forEach(index => {
           if (!matches.has(index)) {

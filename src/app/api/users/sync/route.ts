@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     console.log('💾 開始同步到 PostgreSQL...')
 
     // 在 PostgreSQL 中建立或更新用戶
-    const user = await createOrUpdateUser(googleId, email, name, avatarUrl)
+    const user = await createOrUpdateUser(googleId, email, name, avatarUrl || undefined)
     
     console.log('✅ 用戶同步成功:', {
       id: user.id,
