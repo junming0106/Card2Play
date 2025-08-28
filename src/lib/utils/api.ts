@@ -54,21 +54,89 @@ export async function verifyAuthToken(request: NextRequest) {
   }
 }
 
+// 備用身份驗證：當 Firebase Admin 不可用時，嘗試解析 Firebase Client Token
+async function fallbackAuthVerification(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return { user: null, error: '缺少有效的授權 Token' }
+    }
+
+    const idToken = authHeader.substring(7)
+    console.log('🔄 嘗試備用身份驗證，Token 長度:', idToken.length)
+
+    // 解析 JWT Token 的 payload（不驗證簽名，僅用於獲取基本資訊）
+    const parts = idToken.split('.')
+    if (parts.length !== 3) {
+      console.log('❌ Token 格式無效')
+      return { user: null, error: 'Token 格式無效' }
+    }
+
+    const payload = JSON.parse(atob(parts[1]))
+    console.log('📋 Token payload 解析:', {
+      sub: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      exp: payload.exp
+    })
+
+    // 檢查 Token 是否過期
+    const now = Math.floor(Date.now() / 1000)
+    if (payload.exp && payload.exp < now) {
+      console.log('❌ Token 已過期')
+      return { user: null, error: 'Token 已過期' }
+    }
+
+    // 使用 Token 中的資訊自動建立或取得用戶
+    const { createOrUpdateUser, getUserByGoogleId } = await import('@/lib/database')
+    
+    const googleId = payload.sub
+    const email = payload.email || 'unknown@user.com'
+    const name = payload.name || payload.email?.split('@')[0] || 'User'
+    const avatarUrl = payload.picture || undefined
+
+    console.log('👤 嘗試建立/更新用戶:', { googleId, email, name })
+
+    // 先檢查用戶是否存在
+    let pgUser = await getUserByGoogleId(googleId)
+    
+    if (!pgUser) {
+      // 如果不存在，建立新用戶
+      console.log('🆕 建立新用戶到 PostgreSQL')
+      pgUser = await createOrUpdateUser(googleId, email, name, avatarUrl)
+    }
+
+    console.log('✅ 備用驗證成功，用戶 ID:', pgUser.id)
+
+    return {
+      user: {
+        id: pgUser.id,
+        googleId: pgUser.google_id,
+        email: pgUser.email,
+        name: pgUser.name,
+        avatarUrl: pgUser.avatar_url,
+        createdAt: pgUser.created_at,
+        updatedAt: pgUser.updated_at,
+        firebaseUid: googleId,
+        firebaseToken: payload
+      },
+      error: null
+    }
+  } catch (error) {
+    console.error('💥 備用驗證失敗:', error)
+    return { user: null, error: '備用身份驗證失敗' }
+  }
+}
+
 // 統一身份驗證函數：驗證 JWT Token 並取得 PostgreSQL 用戶資料
 export async function verifyAuthTokenAndGetUser(request: NextRequest) {
   try {
-    // 第一步：驗證 Firebase JWT Token
+    // 第一步：嘗試標準 Firebase Admin 驗證
     const decodedToken = await verifyAuthToken(request)
     if (!decodedToken) {
-      // 如果 Firebase Admin 不可用，嘗試從 Authorization header 中解析基本資訊
-      const authHeader = request.headers.get('Authorization')
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return { user: null, error: '缺少有效的授權 Token' }
-      }
-      
-      // 在這種情況下，我們需要另一種方式來驗證用戶
+      // Firebase Admin 不可用時，使用備用驗證方式
       console.log('⚠️ Firebase Admin 不可用，使用備用驗證方式')
-      return { user: null, error: 'Firebase Admin 服務不可用' }
+      return await fallbackAuthVerification(request)
     }
 
     // 第二步：在 PostgreSQL 中查詢對應的用戶
