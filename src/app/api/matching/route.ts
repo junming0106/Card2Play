@@ -7,13 +7,10 @@ import {
 } from "@/lib/utils/api";
 
 interface MatchResult {
-  playerId: number;
+  playerId: string;
   playerEmail: string;
-  playerName: string;
   gameTitle: string;
-  wantedGame: string;
-  imageUrl?: string;
-  publisher?: string;
+  matchedGame: string; // 用戶想要交換的遊戲
 }
 
 // GET /api/matching-pg - 使用 PostgreSQL 的超高效配對
@@ -43,13 +40,10 @@ export async function GET(request: NextRequest) {
 
     // 轉換為前端期望的格式
     const formattedMatches: MatchResult[] = matches.map((match) => ({
-      playerId: match.player_id,
-      playerEmail: match.player_email,
-      playerName: match.player_name,
+      playerId: match.holder_id.toString(),
+      playerEmail: match.holder_email,
       gameTitle: match.game_title,
-      wantedGame: match.wanted_game,
-      imageUrl: match.image_url,
-      publisher: match.publisher,
+      matchedGame: match.game_title, // 配對的遊戲就是該遊戲本身
     }));
 
     return createSuccessResponse(

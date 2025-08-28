@@ -62,7 +62,7 @@ export default function HallPage() {
       if (response.ok) {
         const result = await response.json();
         console.log("✅ 配對成功:", result);
-        setMatches(result.data || []);
+        setMatches(result.data?.matches || result.data || []);
         // 只有成功時才增加次數
         setRefreshCount((prev) => prev + 1);
       } else {
