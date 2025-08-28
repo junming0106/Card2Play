@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 interface MatchResult {
   playerId: string;
   playerEmail: string;
+  playerName: string;
   gameTitle: string;
   matchedGame: string; // 用戶想要交換的遊戲
 }
@@ -142,23 +143,41 @@ export default function HallPage() {
                 {matches.map((match, index) => (
                   <div
                     key={`${match.playerId}-${index}`}
-                    className="bg-yellow-100 border-4 border-yellow-500 p-4 transform -rotate-1 hover:rotate-0 transition-transform"
+                    className="bg-white border-4 border-black p-4 shadow-[4px_4px_0px_#000000] transform hover:scale-105 transition-transform"
                   >
-                    <div className="text-center">
-                      <h3 className="text-lg font-black mb-2">
-                        玩家 #{index + 1}
-                      </h3>
-                      <p className="font-bold text-sm mb-2 text-gray-600">
-                        {match.playerEmail}
+                    {/* 遊戲標題 */}
+                    <h3 className="font-black text-lg mb-2 line-clamp-2">
+                      {match.gameTitle}
+                    </h3>
+
+                    {/* 配對狀態標籤 */}
+                    <div className="inline-block px-3 py-1 border-2 border-black font-bold text-sm mb-3 bg-green-400 text-green-900">
+                      配對成功
+                    </div>
+
+                    {/* 玩家資訊 */}
+                    <div className="mb-3">
+                      <p className="font-bold text-sm text-gray-600 mb-1">
+                        👤 用戶: {match.playerName}
                       </p>
-                      <div className="bg-green-200 border-2 border-green-500 p-2 mb-2">
-                        <p className="font-black text-xs">對方持有：</p>
-                        <p className="font-bold text-sm">{match.gameTitle}</p>
-                      </div>
-                      <div className="bg-blue-200 border-2 border-blue-500 p-2">
-                        <p className="font-black text-xs">你想要：</p>
-                        <p className="font-bold text-sm">{match.matchedGame}</p>
-                      </div>
+                      <p className="text-sm font-bold text-gray-600">
+                        📧 {match.playerEmail}
+                      </p>
+                    </div>
+
+                    {/* 配對說明 */}
+                    <div className="text-xs font-bold text-gray-500 mb-4">
+                      🎯 對方持有你想要的遊戲
+                    </div>
+
+                    {/* 操作按鈕 */}
+                    <div className="flex gap-2">
+                      <button className="flex-1 bg-blue-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-blue-500 transition-colors">
+                        聯繫
+                      </button>
+                      <button className="flex-1 bg-green-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-green-500 transition-colors">
+                        交換
+                      </button>
                     </div>
                   </div>
                 ))}

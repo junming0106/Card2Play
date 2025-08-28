@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
     const formattedMatches: MatchResult[] = matches.map((match) => ({
       playerId: match.holder_id.toString(),
       playerEmail: match.holder_email,
+      playerName: match.holder_name,
       gameTitle: match.game_title,
       matchedGame: match.game_title, // 配對的遊戲就是該遊戲本身
     }));
