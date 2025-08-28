@@ -16,10 +16,24 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📖 開始讀取用戶收藏...')
     
+    // 檢查 Firebase Admin 是否可用
+    if (!adminDb) {
+      console.log('⚠️ Firebase Admin 不可用，無法讀取 Firestore 資料')
+      return createErrorResponse('服務暫時不可用', 503)
+    }
+    
     const user = await verifyAuthToken(request)
     if (!user) {
       console.log('❌ 讀取收藏：身份驗證失敗')
-      return createErrorResponse('未經授權', 401)
+      
+      // 檢查基本的 Authorization header
+      const authHeader = request.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return createErrorResponse('未經授權', 401)
+      }
+      
+      // 無法使用 Firebase Admin，返回空列表或建議
+      return createErrorResponse('Firebase 服務不可用', 503)
     }
 
     console.log('✅ 身份驗證成功，讀取用戶收藏:', user.uid)
@@ -48,6 +62,13 @@ export async function GET(request: NextRequest) {
 // POST /api/collections - 新增到收藏
 export async function POST(request: NextRequest) {
   try {
+    console.log('🎮 開始新增到收藏...')
+    
+    // 檢查 Firebase Admin 是否可用
+    if (!adminDb) {
+      console.log('⚠️ Firebase Admin 不可用，無法使用 Firestore API')
+      return createErrorResponse('服務暫時不可用，請使用手動新增遊戲功能', 503)
+    }
     console.log('🎯 API 呼叫開始')
     
     // 先測試基本請求解析
@@ -67,12 +88,22 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ 基本驗證通過')
 
-    // 暫時跳過身份驗證測試
+    // 身份驗證 - 使用備用機制
     console.log('🔐 開始身份驗證...')
     const user = await verifyAuthToken(request)
     if (!user) {
-      console.log('❌ 身份驗證失敗')
-      return createErrorResponse('未經授權', 401)
+      console.log('❌ Firebase Admin 身份驗證失敗，嘗試基本驗證')
+      
+      // 檢查基本的 Authorization header
+      const authHeader = request.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('❌ 缺少有效的 Authorization header')
+        return createErrorResponse('未經授權', 401)
+      }
+      
+      // 在這種情況下，我們無法使用 Firestore，返回建議使用其他功能
+      console.log('⚠️ 無法使用 Firebase Admin，建議使用手動新增遊戲功能')
+      return createErrorResponse('Firebase 服務不可用，請使用手動新增遊戲功能', 503)
     }
     console.log('✅ 身份驗證成功，用戶 UID:', user.uid)
 

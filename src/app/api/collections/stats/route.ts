@@ -12,10 +12,24 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 開始讀取收藏統計...')
     
+    // 檢查 Firebase Admin 是否可用
+    if (!adminDb) {
+      console.log('⚠️ Firebase Admin 不可用，無法讀取統計資料')
+      return createErrorResponse('服務暫時不可用', 503)
+    }
+    
     const user = await verifyAuthToken(request)
     if (!user) {
       console.log('❌ 統計讀取：身份驗證失敗')
-      return createErrorResponse('未經授權', 401)
+      
+      // 檢查基本的 Authorization header
+      const authHeader = request.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return createErrorResponse('未經授權', 401)
+      }
+      
+      // 無法使用 Firebase Admin，返回默認統計
+      return createErrorResponse('Firebase 服務不可用', 503)
     }
 
     console.log('✅ 身份驗證成功，讀取統計:', user.uid)
