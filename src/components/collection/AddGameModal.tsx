@@ -37,7 +37,6 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
       const idToken = await user.getIdToken();
       console.log('🎫 取得 ID Token，長度:', idToken.length);
       console.log('📤 準備發送請求資料:', {
-        gameId: game,
         gameTitle: game,
         status,
         rating: rating || null,
@@ -52,7 +51,6 @@ export default function AddGameModal({ game, isOpen, onClose, onSuccess }: AddGa
           Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
-          gameId: game,
           gameTitle: game,
           status,
           rating: rating || null,

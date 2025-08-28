@@ -45,13 +45,33 @@ export async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
-        status VARCHAR(20) CHECK (status IN ('owned', 'wanted')) NOT NULL,
+        status VARCHAR(20) CHECK (status IN ('owned', 'wanted', '持有中', '想要交換', '已借出')) NOT NULL,
+        rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+        notes TEXT,
+        added_at TIMESTAMP DEFAULT NOW(),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(user_id, game_id)
       )
     `;
     console.log('✅ user_games 表建立完成');
+
+    // 擴展現有 user_games 表結構（如果需要）
+    try {
+      await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5)`;
+      await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS notes TEXT`;
+      await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS added_at TIMESTAMP DEFAULT NOW()`;
+      
+      // 更新 status 欄位約束以支援中文狀態
+      await sql`
+        ALTER TABLE user_games DROP CONSTRAINT IF EXISTS user_games_status_check;
+        ALTER TABLE user_games ADD CONSTRAINT user_games_status_check 
+        CHECK (status IN ('owned', 'wanted', '持有中', '想要交換', '已借出'));
+      `;
+      console.log('✅ user_games 表結構更新完成');
+    } catch (error) {
+      console.log('⚠️ user_games 表結構更新跳過（可能已存在）:', (error as Error).message);
+    }
 
     // 建立配對優化索引
     await sql`CREATE INDEX IF NOT EXISTS idx_user_games_status_game ON user_games(status, game_id)`;
@@ -146,8 +166,32 @@ export async function findGameByTitle(title: string) {
   }
 }
 
+// 根據標題尋找或建立遊戲
+export async function findOrCreateGameByTitle(title: string) {
+  try {
+    // 先嘗試找到現有遊戲
+    let game = await findGameByTitle(title);
+    
+    if (!game) {
+      // 如果沒有找到，建立新遊戲
+      const result = await sql`
+        INSERT INTO games (title, publisher, is_custom)
+        VALUES (${title}, 'Nintendo', false)
+        RETURNING *
+      `;
+      game = result.rows[0];
+      console.log('✅ 建立新遊戲:', title);
+    }
+    
+    return game;
+  } catch (error) {
+    console.error('❌ 尋找或建立遊戲失敗:', error);
+    throw error;
+  }
+}
+
 // 用戶遊戲關聯查詢
-export async function getUserGames(userId: number, status?: 'owned' | 'wanted') {
+export async function getUserGames(userId: number, status?: 'owned' | 'wanted' | '持有中' | '想要交換' | '已借出') {
   try {
     let result;
     if (status) {
@@ -156,7 +200,7 @@ export async function getUserGames(userId: number, status?: 'owned' | 'wanted') 
         FROM user_games ug
         JOIN games g ON ug.game_id = g.id
         WHERE ug.user_id = ${userId} AND ug.status = ${status}
-        ORDER BY ug.created_at DESC
+        ORDER BY ug.added_at DESC, ug.created_at DESC
       `;
     } else {
       result = await sql`
@@ -164,7 +208,7 @@ export async function getUserGames(userId: number, status?: 'owned' | 'wanted') 
         FROM user_games ug
         JOIN games g ON ug.game_id = g.id
         WHERE ug.user_id = ${userId}
-        ORDER BY ug.created_at DESC
+        ORDER BY ug.added_at DESC, ug.created_at DESC
       `;
     }
     return result.rows;
@@ -174,13 +218,17 @@ export async function getUserGames(userId: number, status?: 'owned' | 'wanted') 
   }
 }
 
-export async function addUserGame(userId: number, gameId: number, status: 'owned' | 'wanted') {
+export async function addUserGame(userId: number, gameId: number, status: 'owned' | 'wanted' | '持有中' | '想要交換' | '已借出', rating?: number, notes?: string) {
   try {
     const result = await sql`
-      INSERT INTO user_games (user_id, game_id, status)
-      VALUES (${userId}, ${gameId}, ${status})
+      INSERT INTO user_games (user_id, game_id, status, rating, notes, added_at)
+      VALUES (${userId}, ${gameId}, ${status}, ${rating || null}, ${notes || null}, NOW())
       ON CONFLICT (user_id, game_id) 
-      DO UPDATE SET status = EXCLUDED.status, updated_at = NOW()
+      DO UPDATE SET 
+        status = EXCLUDED.status, 
+        rating = EXCLUDED.rating,
+        notes = EXCLUDED.notes,
+        updated_at = NOW()
       RETURNING *
     `;
     return result.rows[0];
@@ -292,6 +340,108 @@ export async function deleteCustomGame(userId: number, gameId: number) {
     return game;
   } catch (error) {
     console.error('❌ 自定義遊戲刪除失敗:', error);
+    throw error;
+  }
+}
+
+// 收藏統計查詢
+export async function getUserGameStats(userId: number) {
+  try {
+    const result = await sql`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = '持有中' THEN 1 END) as owned_count,
+        COUNT(CASE WHEN status = '想要交換' THEN 1 END) as wanted_count,
+        COUNT(CASE WHEN status = '已借出' THEN 1 END) as lent_count,
+        COUNT(CASE WHEN is_custom = true THEN 1 END) as custom_count
+      FROM user_games ug
+      JOIN games g ON ug.game_id = g.id
+      WHERE ug.user_id = ${userId}
+    `;
+    
+    const stats = result.rows[0];
+    return {
+      total: parseInt(stats.total),
+      持有中: parseInt(stats.owned_count),
+      想要交換: parseInt(stats.wanted_count),
+      已借出: parseInt(stats.lent_count),
+      customGames: parseInt(stats.custom_count)
+    };
+  } catch (error) {
+    console.error('❌ 用戶遊戲統計查詢失敗:', error);
+    throw error;
+  }
+}
+
+// 更新用戶遊戲
+export async function updateUserGame(userId: number, gameId: number, updates: {
+  status?: '持有中' | '想要交換' | '已借出';
+  rating?: number;
+  notes?: string;
+}) {
+  try {
+    // 動態建立更新查詢
+    if (updates.status && updates.rating !== undefined && updates.notes !== undefined) {
+      const result = await sql`
+        UPDATE user_games 
+        SET status = ${updates.status}, rating = ${updates.rating}, notes = ${updates.notes}, updated_at = NOW()
+        WHERE user_id = ${userId} AND game_id = ${gameId}
+        RETURNING *
+      `;
+      return result.rows[0];
+    } else if (updates.status && updates.rating !== undefined) {
+      const result = await sql`
+        UPDATE user_games 
+        SET status = ${updates.status}, rating = ${updates.rating}, updated_at = NOW()
+        WHERE user_id = ${userId} AND game_id = ${gameId}
+        RETURNING *
+      `;
+      return result.rows[0];
+    } else if (updates.status && updates.notes !== undefined) {
+      const result = await sql`
+        UPDATE user_games 
+        SET status = ${updates.status}, notes = ${updates.notes}, updated_at = NOW()
+        WHERE user_id = ${userId} AND game_id = ${gameId}
+        RETURNING *
+      `;
+      return result.rows[0];
+    } else if (updates.status) {
+      const result = await sql`
+        UPDATE user_games 
+        SET status = ${updates.status}, updated_at = NOW()
+        WHERE user_id = ${userId} AND game_id = ${gameId}
+        RETURNING *
+      `;
+      return result.rows[0];
+    } else if (updates.rating !== undefined && updates.notes !== undefined) {
+      const result = await sql`
+        UPDATE user_games 
+        SET rating = ${updates.rating}, notes = ${updates.notes}, updated_at = NOW()
+        WHERE user_id = ${userId} AND game_id = ${gameId}
+        RETURNING *
+      `;
+      return result.rows[0];
+    } else if (updates.rating !== undefined) {
+      const result = await sql`
+        UPDATE user_games 
+        SET rating = ${updates.rating}, updated_at = NOW()
+        WHERE user_id = ${userId} AND game_id = ${gameId}
+        RETURNING *
+      `;
+      return result.rows[0];
+    } else if (updates.notes !== undefined) {
+      const result = await sql`
+        UPDATE user_games 
+        SET notes = ${updates.notes}, updated_at = NOW()
+        WHERE user_id = ${userId} AND game_id = ${gameId}
+        RETURNING *
+      `;
+      return result.rows[0];
+    } else {
+      throw new Error('沒有提供有效的更新欄位');
+    }
+  } catch (error) {
+    console.error('❌ 用戶遊戲更新失敗:', error);
     throw error;
   }
 }

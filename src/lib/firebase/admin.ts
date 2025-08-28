@@ -1,5 +1,5 @@
 // 構建時安全的 Firebase Admin 配置
-let adminDbInstance: any = null
+// 只保留 Auth 功能，移除 Firestore
 let adminAuthInstance: any = null
 
 // 檢查是否在構建時
@@ -9,8 +9,7 @@ if (!isBuildTime && typeof window === 'undefined') {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { initializeApp, getApps, cert } = require('firebase-admin/app')
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getFirestore } = require('firebase-admin/firestore')  
+    // 只需要 Auth 功能，移除 Firestore
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { getAuth } = require('firebase-admin/auth')
 
@@ -40,12 +39,10 @@ if (!isBuildTime && typeof window === 'undefined') {
           }),
         })
 
-        adminDbInstance = getFirestore()
         adminAuthInstance = getAuth()
         console.log('✅ Firebase Admin 初始化成功')
       } else {
         console.log('♻️ 使用現有的 Firebase Admin 實例')
-        adminDbInstance = getFirestore()
         adminAuthInstance = getAuth()
       }
     }
@@ -58,5 +55,5 @@ if (!isBuildTime && typeof window === 'undefined') {
 }
 
 // 導出實例或 null（構建時）
-export const adminDb = adminDbInstance
+// 移除 Firestore，只保留 Auth
 export const adminAuth = adminAuthInstance

@@ -79,10 +79,29 @@
         </div>
 
         <div class="section">
-            <h2>🎯 自訂遊戲管理</h2>
+            <h2>🎯 收藏管理（新 PostgreSQL 系統）</h2>
             <div>
-                <input type="text" id="gameTitle" placeholder="遊戲名稱" value="測試遊戲 2024">
-                <input type="text" id="gamePublisher" placeholder="發行商（選填）" value="測試發行商">
+                <input type="text" id="gameTitle" placeholder="遊戲名稱" value="薩爾達傳說 曠野之息">
+                <select id="gameStatus">
+                    <option value="持有中">持有中</option>
+                    <option value="想要交換">想要交換</option>
+                    <option value="已借出">已借出</option>
+                </select>
+                <input type="number" id="gameRating" placeholder="評分 (1-5)" min="1" max="5" value="5">
+                <br>
+                <textarea id="gameNotes" placeholder="備註" rows="2" cols="40">很棒的遊戲！</textarea>
+                <br>
+                <button onclick="addGameToCollection()">新增到收藏</button>
+                <button onclick="getCollectionStats()">取得收藏統計</button>
+                <button onclick="getCollections()">取得收藏列表</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎨 自訂遊戲管理</h2>
+            <div>
+                <input type="text" id="customGameTitle" placeholder="自訂遊戲名稱" value="測試自訂遊戲 2024">
+                <input type="text" id="customGamePublisher" placeholder="發行商（選填）" value="測試發行商">
                 <br>
                 <button onclick="createCustomGame()">建立自訂遊戲</button>
                 <button onclick="getCustomGames()">取得自訂遊戲列表</button>
@@ -219,10 +238,74 @@
             }
         }
 
-        async function createCustomGame() {
+        async function addGameToCollection() {
             try {
                 const title = document.getElementById('gameTitle').value;
-                const publisher = document.getElementById('gamePublisher').value;
+                const status = document.getElementById('gameStatus').value;
+                const rating = parseInt(document.getElementById('gameRating').value);
+                const notes = document.getElementById('gameNotes').value;
+                
+                if (!title.trim()) {
+                    addResult('請輸入遊戲名稱', true);
+                    return;
+                }
+
+                const response = await makeAuthenticatedRequest('/api/collections', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        gameTitle: title,
+                        status: status,
+                        rating: isNaN(rating) ? null : rating,
+                        notes: notes || null,
+                        isCustomGame: false
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addResult(`遊戲新增到收藏成功:\n${JSON.stringify(data.data, null, 2)}`, false, true);
+                } else {
+                    addResult(`遊戲新增到收藏失敗: ${data.error}`, true);
+                }
+            } catch (error) {
+                addResult(`新增到收藏錯誤: ${error.message}`, true);
+            }
+        }
+
+        async function getCollectionStats() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/collections/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult(`收藏統計:\n${JSON.stringify(data.data, null, 2)}`, false, true);
+                } else {
+                    addResult(`取得收藏統計失敗: ${data.error}`, true);
+                }
+            } catch (error) {
+                addResult(`收藏統計錯誤: ${error.message}`, true);
+            }
+        }
+
+        async function getCollections() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/collections');
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult(`收藏列表 (${data.data.length} 個):\n${JSON.stringify(data.data, null, 2)}`, false, true);
+                } else {
+                    addResult(`取得收藏列表失敗: ${data.error}`, true);
+                }
+            } catch (error) {
+                addResult(`收藏列表錯誤: ${error.message}`, true);
+            }
+        }
+
+        async function createCustomGame() {
+            try {
+                const title = document.getElementById('customGameTitle').value;
+                const publisher = document.getElementById('customGamePublisher').value;
                 
                 if (!title.trim()) {
                     addResult('請輸入遊戲名稱', true);
