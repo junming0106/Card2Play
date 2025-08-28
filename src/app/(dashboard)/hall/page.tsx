@@ -21,7 +21,7 @@ export default function HallPage() {
 
   const fetchMatches = async () => {
     if (!user || refreshCount >= 3) {
-      console.log('❌ 配對請求被阻止:', { user: !!user, refreshCount });
+      console.log("❌ 配對請求被阻止:", { user: !!user, refreshCount });
       return;
     }
 
@@ -29,62 +29,55 @@ export default function HallPage() {
     setError("");
 
     try {
-      console.log('🎯 開始配對請求...');
-      console.log('👤 用戶狀態:', { 
-        uid: user.uid, 
-        email: user.email, 
-        emailVerified: user.emailVerified 
+      console.log("🎯 開始配對請求...");
+      console.log("👤 用戶狀態:", {
+        uid: user.uid,
+        email: user.email,
+        emailVerified: user.emailVerified,
       });
-      
+
       if (!user.emailVerified) {
-        console.log('❌ 用戶電子郵件未驗證');
+        console.log("❌ 用戶電子郵件未驗證");
         setError("請先驗證您的電子郵件");
         return;
       }
-      
+
       const idToken = await user.getIdToken();
-      console.log('🎫 取得 Token，長度:', idToken.length);
-      console.log('🎫 Token 前20字:', idToken.substring(0, 20));
-      
+      console.log("🎫 取得 Token，長度:", idToken.length);
+      console.log("🎫 Token 前20字:", idToken.substring(0, 20));
+
       const headers = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${idToken}`,
       };
-      console.log('📤 請求 Headers:', headers);
-      
+      console.log("📤 請求 Headers:", headers);
+
       const response = await fetch("/api/matching", {
         method: "GET",
         headers: headers,
       });
 
-      console.log('📥 配對回應狀態:', response.status);
+      console.log("📥 配對回應狀態:", response.status);
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ 配對成功:', result);
+        console.log("✅ 配對成功:", result);
         setMatches(result.data || []);
         // 只有成功時才增加次數
-        setRefreshCount(prev => prev + 1);
+        setRefreshCount((prev) => prev + 1);
       } else {
         const result = await response.json();
-        console.log('❌ 配對失敗:', result);
+        console.log("❌ 配對失敗:", result);
         setError(result.error || result.message || "配對失敗");
         // 配對失敗不增加次數
       }
     } catch (error) {
-      console.error('💥 配對錯誤:', error);
+      console.error("💥 配對錯誤:", error);
       setError("網路錯誤，請稍後再試");
     } finally {
       setLoading(false);
     }
   };
-
-  // 移除自動執行配對，讓用戶手動點擊開始
-  // useEffect(() => {
-  //   if (user) {
-  //     fetchMatches();
-  //   }
-  // }, [user]);
 
   return (
     <ProtectedRoute>
@@ -92,7 +85,7 @@ export default function HallPage() {
         <div className="w-full max-w-6xl mx-auto">
           {/* 回首頁按鈕 */}
           <div className="mb-4 sm:mb-6">
-            <Link 
+            <Link
               href="/"
               className="inline-flex items-center bg-red-500 text-white border-4 border-black px-4 py-2 font-black text-sm sm:text-base hover:bg-red-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
             >
@@ -130,7 +123,11 @@ export default function HallPage() {
                 disabled={loading}
                 className="bg-green-500 text-white border-4 border-black px-6 py-3 font-black text-lg hover:bg-green-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000] disabled:opacity-50"
               >
-                {loading ? "配對中..." : refreshCount === 0 ? "🎯 開始配對" : "🔄 重新配對"}
+                {loading
+                  ? "配對中..."
+                  : refreshCount === 0
+                  ? "🎯 開始配對"
+                  : "🔄 重新配對"}
               </button>
             </div>
           )}
@@ -170,15 +167,16 @@ export default function HallPage() {
           ) : (
             <div className="bg-white border-4 sm:border-8 border-black p-8 text-center shadow-[8px_8px_0px_#000000] transform -rotate-1">
               <h2 className="text-2xl font-black text-gray-600 mb-4">
-                {refreshCount === 0 ? "點擊上方按鈕開始配對" : "目前沒有找到配對"}
+                {refreshCount === 0
+                  ? "點擊上方按鈕開始配對"
+                  : "目前沒有找到配對"}
               </h2>
               <p className="font-bold text-gray-500">
-                {refreshCount === 0 
-                  ? "我們會幫你尋找想要交換的遊戲夥伴" 
-                  : refreshCount < 3 
-                    ? "可以再次刷新尋找更多配對"
-                    : "今日配對次數已用完，明日再試"
-                }
+                {refreshCount === 0
+                  ? "我們會幫你尋找想要交換的遊戲夥伴"
+                  : refreshCount < 3
+                  ? "可以再次刷新尋找更多配對"
+                  : "今日配對次數已用完，明日再試"}
               </p>
             </div>
           )}
