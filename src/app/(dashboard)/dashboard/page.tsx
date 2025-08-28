@@ -36,9 +36,9 @@ export default function DashboardPage() {
     setMessage("");
 
     try {
-      // 這裡可以添加更新用戶資料的 API 調用
-      // 目前先更新 Firebase 用戶的 displayName
-      await user.updateProfile({
+      // 使用 Firebase Auth 的 updateProfile 方法
+      const { updateProfile } = await import('firebase/auth');
+      await updateProfile(user, {
         displayName: displayName.trim(),
       });
 

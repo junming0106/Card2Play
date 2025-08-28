@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // 暫時的通知資料類型（未來可以從 API 取得）
@@ -18,7 +17,6 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
   const [notifications] = useState<Notification[]>([
     {
       id: '1',
