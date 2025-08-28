@@ -530,7 +530,7 @@ export async function findReversematches(userId: number, limit = 3) {
       JOIN user_games seeker ON seeker.game_id = holder.game_id
       JOIN users seeker_user ON seeker.user_id = seeker_user.id
       WHERE holder.user_id = ${userId}
-        AND holder.status = '持有'
+        AND holder.status = '持有中'
         AND seeker.status = '想要交換'
         AND seeker.user_id != ${userId}
       ORDER BY seeker.created_at DESC
