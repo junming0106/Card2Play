@@ -10,7 +10,11 @@ interface GameSearchProps {
   disabled?: boolean;
 }
 
-export default function GameSearch({ games, onSelectGame, disabled = false }: GameSearchProps) {
+export default function GameSearch({
+  games,
+  onSelectGame,
+  disabled = false,
+}: GameSearchProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredGames, setFilteredGames] = useState<NintendoSwitchGame[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -24,7 +28,7 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
         await gameService.loadGames();
         setIsServiceReady(true);
       } catch (error) {
-        console.error('❌ 遊戲服務初始化失敗:', error);
+        console.error("❌ 遊戲服務初始化失敗:", error);
       }
     };
 
@@ -38,7 +42,7 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
     }
 
     if (!isServiceReady) {
-      console.warn('⚠️ 遊戲服務尚未就緒');
+      console.warn("⚠️ 遊戲服務尚未就緒");
       setFilteredGames([]);
       return;
     }
@@ -48,7 +52,7 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
       const results = gameService.searchGames(searchTerm, 15);
       setFilteredGames(results);
     } catch (error) {
-      console.error('❌ 搜尋遊戲時發生錯誤:', error);
+      console.error("❌ 搜尋遊戲時發生錯誤:", error);
       setFilteredGames([]);
     }
   }, [searchTerm, gameService, isServiceReady]);
@@ -90,7 +94,9 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           disabled={disabled || !isServiceReady}
-          placeholder={!isServiceReady ? "正在載入遊戲資料..." : "搜尋遊戲名稱..."}
+          placeholder={
+            !isServiceReady ? "正在載入遊戲資料..." : "搜尋遊戲名稱..."
+          }
           className="w-full p-2 sm:p-4 border-2 sm:border-4 border-black font-bold text-sm sm:text-lg bg-white placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
         />
         <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
@@ -100,16 +106,14 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
 
       {/* 搜尋結果下拉選單 */}
       {showDropdown && searchTerm && filteredGames.length > 0 && (
-        <div className="absolute z-[100] w-full mt-1 bg-white border-2 sm:border-4 border-black shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] max-h-60 sm:max-h-80 overflow-y-auto">
+        <div className="absolute z-[9999] w-full mt-1 bg-white border-2 sm:border-4 border-black shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] max-h-60 sm:max-h-80 overflow-y-auto">
           {filteredGames.map((game, index) => (
             <button
               key={index}
               onClick={() => handleSelectGame(game)}
               className="w-full p-2 sm:p-4 text-left border-b border-black hover:bg-yellow-200 focus:bg-yellow-200 focus:outline-none transition-colors"
             >
-              <div className="font-black text-sm sm:text-lg">
-                {game}
-              </div>
+              <div className="font-black text-sm sm:text-lg">{game}</div>
             </button>
           ))}
         </div>
@@ -118,9 +122,7 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
       {/* 沒有結果提示 */}
       {showDropdown && searchTerm && filteredGames.length === 0 && (
         <div className="absolute z-10 w-full mt-1 bg-white border-4 border-black shadow-[8px_8px_0px_#000000] p-4 text-center">
-          <div className="font-bold text-gray-600">
-            找不到相關遊戲
-          </div>
+          <div className="font-bold text-gray-600">找不到相關遊戲</div>
           <div className="text-sm font-bold text-gray-500 mt-1">
             試試其他關鍵字或手動新增遊戲
           </div>

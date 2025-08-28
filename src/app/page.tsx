@@ -54,7 +54,7 @@ export default function Home() {
             <p className="text-lg font-bold text-black mb-6">
               查看你的卡片有誰想要交換呢？！
             </p>
-            <Link href="/collection" className="btn-brutalist inline-block">
+            <Link href="/notifications" className="btn-brutalist inline-block">
               查看清單
             </Link>
           </div>
@@ -92,10 +92,10 @@ export default function Home() {
               </div>
               <div className="flex flex-col md:flex-row gap-4 justify-center">
                 <Link
-                  href="/collection"
+                  href="/dashboard"
                   className="bg-green-400 text-black border-4 border-white px-8 py-4 font-black text-xl hover:bg-green-500 transform hover:scale-105 transition-all duration-100 inline-block text-center"
                 >
-                  🎮 進入收藏
+                  🎮 個人資訊
                 </Link>
                 <button
                   onClick={handleSignOut}
@@ -129,7 +129,7 @@ export default function Home() {
           )}
         </section>
 
-        <footer className="text-center bg-red-500 border-4 border-black p-6">
+        <footer className="text-center bg-red-500 border-4 border-black">
           <p className="text-2xl font-black text-white">
             © 2025 CARD2PLAY - 讓交換遊戲更簡單粗暴，暢玩遊戲順便交交朋友！
           </p>

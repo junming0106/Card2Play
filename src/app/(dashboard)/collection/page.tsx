@@ -151,7 +151,7 @@ export default function CollectionPage() {
         <div className="w-full max-w-6xl mx-auto">
           {/* 回首頁按鈕 */}
           <div className="mb-4 sm:mb-6">
-            <Link 
+            <Link
               href="/"
               className="inline-flex items-center bg-red-500 text-white border-4 border-black px-4 py-2 font-black text-sm sm:text-base hover:bg-red-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
             >
@@ -183,7 +183,7 @@ export default function CollectionPage() {
 
           {/* 統計面板 */}
           {stats && (
-            <div className="grid grid-cols-3 gap-4 sm:gap-6 mb-16 sm:mb-20 mt-16 sm:mt-20">
+            <div className="grid grid-cols-3 gap-4 sm:gap-2 mb-2 sm:mb-2 mt-16 sm:mt-20">
               <div className="bg-green-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-black">
                   {stats.持有中}
@@ -200,7 +200,7 @@ export default function CollectionPage() {
                   想要交換
                 </div>
               </div>
-              <div className="bg-blue-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative z-10">
+              <div className="bg-blue-400 border-2 sm:border-4 border-black p-2 sm:p-4 text-center transform hover:scale-105 transition-transform relative">
                 <div className="text-xl sm:text-2xl lg:text-3xl font-black">
                   {stats.已借出}
                 </div>
@@ -212,7 +212,7 @@ export default function CollectionPage() {
           )}
 
           {/* 新增遊戲區域 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-16 sm:mb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-16 sm:mb-20 z-50">
             {/* 搜尋 Nintendo Switch 遊戲 */}
             <div className="bg-cyan-400 border-4 sm:border-8 border-black p-3 sm:p-6 shadow-[4px_4px_0px_#000000] sm:shadow-[8px_8px_0px_#000000] transform rotate-1 min-h-[280px] sm:min-h-[320px] flex flex-col">
               <h2 className="text-lg sm:text-2xl font-black mb-3 sm:mb-4 text-center">

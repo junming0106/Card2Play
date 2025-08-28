@@ -130,6 +130,57 @@ export async function getUserByGoogleId(googleId: string) {
   }
 }
 
+// 刪除用戶及其相關資料
+export async function deleteUser(userId: number) {
+  try {
+    console.log("🗑️ 開始刪除用戶及相關資料，用戶 ID:", userId);
+    
+    // 由於 user_games 表設定了 ON DELETE CASCADE，
+    // 刪除用戶時會自動刪除相關的遊戲收藏記錄
+    const result = await sql`
+      DELETE FROM users WHERE id = ${userId}
+      RETURNING *
+    `;
+
+    if (result.rows.length === 0) {
+      console.log("⚠️ 找不到要刪除的用戶:", userId);
+      return null;
+    }
+
+    const deletedUser = result.rows[0];
+    console.log("✅ 用戶刪除成功:", {
+      id: deletedUser.id,
+      email: deletedUser.email,
+      name: deletedUser.name
+    });
+
+    return deletedUser;
+  } catch (error) {
+    console.error("❌ 用戶刪除失敗:", error);
+    throw error;
+  }
+}
+
+// 根據 Google ID 刪除用戶
+export async function deleteUserByGoogleId(googleId: string) {
+  try {
+    console.log("🗑️ 根據 Google ID 刪除用戶:", googleId);
+    
+    // 先查找用戶
+    const user = await getUserByGoogleId(googleId);
+    if (!user) {
+      console.log("⚠️ 找不到要刪除的用戶:", googleId);
+      return null;
+    }
+
+    // 刪除用戶
+    return await deleteUser(user.id);
+  } catch (error) {
+    console.error("❌ 根據 Google ID 刪除用戶失敗:", error);
+    throw error;
+  }
+}
+
 // 遊戲相關查詢
 export async function createGame(gameData: {
   title: string;
