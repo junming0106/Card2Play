@@ -45,6 +45,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             displayName: user.displayName || '',
             emailVerified: user.emailVerified
           })
+
+          // 🔄 新增：自動同步用戶到 PostgreSQL
+          console.log('🔄 開始同步用戶到 PostgreSQL...', user.uid)
+          try {
+            const syncResponse = await fetch('/api/users/sync', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            })
+            
+            if (syncResponse.ok) {
+              const syncResult = await syncResponse.json()
+              console.log('✅ 用戶同步成功:', syncResult)
+            } else {
+              const syncError = await syncResponse.json()
+              console.log('⚠️ 用戶同步失敗:', syncError)
+              // 同步失敗不應該影響登入流程，只記錄錯誤
+            }
+          } catch (syncError) {
+            console.error('💥 用戶同步請求失敗:', syncError)
+            // 同步失敗不應該影響登入流程
+          }
+
         } catch (error) {
           console.error('更新認證 cookie 失敗:', error)
         }

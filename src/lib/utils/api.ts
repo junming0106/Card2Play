@@ -23,7 +23,7 @@ export interface PaginatedResponse<T = any> {
 export async function verifyAuthToken(request: NextRequest) {
   try {
     const authHeader = request.headers.get('Authorization')
-    console.log('🔍 Authorization Header:', authHeader ? `Bearer ${authHeader.substring(7, 20)}...` : 'null')
+    console.log('🔍 Authorization Header:', authHeader ? 'Present' : 'null')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('❌ 無效的 Authorization Header 格式')
@@ -45,6 +45,58 @@ export async function verifyAuthToken(request: NextRequest) {
       console.error('💥 完整錯誤:', error.message)
     }
     return null
+  }
+}
+
+// 統一身份驗證函數：驗證 JWT Token 並取得 PostgreSQL 用戶資料
+export async function verifyAuthTokenAndGetUser(request: NextRequest) {
+  try {
+    // 第一步：驗證 Firebase JWT Token
+    const decodedToken = await verifyAuthToken(request)
+    if (!decodedToken) {
+      return { user: null, error: 'JWT Token 驗證失敗' }
+    }
+
+    // 第二步：在 PostgreSQL 中查詢對應的用戶
+    const { getUserByGoogleId } = await import('@/lib/database')
+    const pgUser = await getUserByGoogleId(decodedToken.uid)
+    
+    if (!pgUser) {
+      console.log('⚠️ PostgreSQL 中找不到用戶，UID:', decodedToken.uid)
+      return { 
+        user: null, 
+        error: '用戶未同步到資料庫',
+        firebaseUser: decodedToken 
+      }
+    }
+
+    console.log('✅ 找到 PostgreSQL 用戶:', {
+      id: pgUser.id,
+      email: pgUser.email,
+      name: pgUser.name
+    })
+
+    // 返回包含完整資訊的用戶物件
+    return {
+      user: {
+        // PostgreSQL 用戶資料
+        id: pgUser.id,
+        googleId: pgUser.google_id,
+        email: pgUser.email,
+        name: pgUser.name,
+        avatarUrl: pgUser.avatar_url,
+        createdAt: pgUser.created_at,
+        updatedAt: pgUser.updated_at,
+        // Firebase 用戶資料
+        firebaseUid: decodedToken.uid,
+        firebaseToken: decodedToken
+      },
+      error: null
+    }
+
+  } catch (error) {
+    console.error('💥 統一身份驗證錯誤:', error)
+    return { user: null, error: '身份驗證過程發生錯誤' }
   }
 }
 

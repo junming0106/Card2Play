@@ -36,35 +36,23 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
     setError("");
 
     try {
-      // 生成唯一的遊戲 ID
-      const customGameId = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // 直接新增到收藏
-      const response = await fetch("/api/collections", {
+      // 直接新增到 PostgreSQL
+      const response = await fetch("/api/custom-games-pg", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${await user.getIdToken()}`,
         },
         body: JSON.stringify({
-          gameId: customGameId,
-          gameTitle: gameTitle.trim(),
-          status: status,
-          rating: rating || null,
-          notes: notes.trim() || null,
-          isCustomGame: true,
-          customGameData: {
-            id: customGameId,
-            title: gameTitle.trim(),
-            customTitle: gameTitle.trim(),
-            platform: "Nintendo Switch",
-            media: "實體卡帶",
-            isCustom: true
-          }
+          customTitle: gameTitle.trim(),
+          customPublisher: "自定義",
+          releaseDate: new Date().toISOString().split('T')[0],
         }),
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log("✅ 遊戲成功新增到 PostgreSQL:", result.data.game.title);
         onSuccess();
         setIsModalOpen(false);
         setGameTitle("");
@@ -76,6 +64,7 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
         setError(result.error || result.message || "新增失敗");
       }
     } catch (error) {
+      console.error("❌ 新增遊戲錯誤:", error);
       setError("網路錯誤，請稍後再試");
     } finally {
       setLoading(false);
