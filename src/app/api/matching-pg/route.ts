@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { findGameMatches } from '@/lib/database'
+import { findGameMatches, findReversematches } from '@/lib/database'
 import { verifyAuthTokenAndGetUser, createSuccessResponse, createErrorResponse } from '@/lib/utils/api'
 
 interface MatchResult {
@@ -7,9 +7,9 @@ interface MatchResult {
   playerEmail: string;
   playerName: string;
   gameTitle: string;
-  wantedGame: string;
-  imageUrl?: string;
-  publisher?: string;
+  gameId: number;
+  matchType: 'seeking' | 'offering'; // seeking: 我想要的遊戲有人持有, offering: 我持有的遊戲有人想要
+  addedAt: string;
 }
 
 // GET /api/matching-pg - 使用 PostgreSQL 的超高效配對
@@ -32,24 +32,47 @@ export async function GET(request: NextRequest) {
       name: user.name
     })
 
-    // 使用真實的 PostgreSQL 用戶 ID 進行配對！
-    const matches = await findGameMatches(user.id, 3)
+    // 核心配對邏輯：
+    // 1. 找到我「想要交換」的遊戲，有其他用戶「持有」
+    const seekingMatches = await findGameMatches(user.id, 3)
     
-    console.log('🎯 配對完成，找到', matches.length, '個結果')
+    // 2. 找到我「持有」的遊戲，有其他用戶「想要交換」  
+    const offeringMatches = await findReversematches(user.id, 3)
+    
+    console.log('🎯 配對完成:', {
+      seeking: seekingMatches.length,
+      offering: offeringMatches.length
+    })
 
-    // 轉換為前端期望的格式
-    const formattedMatches: MatchResult[] = matches.map(match => ({
-      playerId: match.player_id,
-      playerEmail: match.player_email,
-      playerName: match.player_name,
-      gameTitle: match.game_title,
-      wantedGame: match.wanted_game,
-      imageUrl: match.image_url,
-      publisher: match.publisher
-    }))
+    // 轉換為統一格式
+    const allMatches: MatchResult[] = [
+      ...seekingMatches.map(match => ({
+        playerId: match.holder_id,
+        playerEmail: match.holder_email,
+        playerName: match.holder_name,
+        gameTitle: match.game_title,
+        gameId: match.game_id,
+        matchType: 'seeking' as const,
+        addedAt: match.holder_added_at
+      })),
+      ...offeringMatches.map(match => ({
+        playerId: match.seeker_id,
+        playerEmail: match.seeker_email,
+        playerName: match.seeker_name,
+        gameTitle: match.game_title,
+        gameId: match.game_id,
+        matchType: 'offering' as const,
+        addedAt: match.seeker_added_at
+      }))
+    ]
 
     return createSuccessResponse({
-      matches: formattedMatches,
+      matches: allMatches,
+      summary: {
+        total: allMatches.length,
+        seeking: seekingMatches.length,
+        offering: offeringMatches.length
+      },
       user: {
         id: user.id,
         name: user.name,
@@ -59,9 +82,9 @@ export async function GET(request: NextRequest) {
         queries: 1, // 只需要 1 個查詢！
         previousQueries: '50+', // 之前需要 50+ 個查詢
         improvement: '50x faster',
-        matchCount: matches.length
+        matchCount: allMatches.length
       }
-    }, `找到 ${matches.length} 個配對`)
+    }, `找到 ${allMatches.length} 個配對`)
 
   } catch (error) {
     console.error('💥 PostgreSQL 配對錯誤:', error)

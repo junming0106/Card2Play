@@ -446,35 +446,72 @@ export async function updateUserGame(userId: number, gameId: number, updates: {
   }
 }
 
-// 配對查詢（超高效！）
+// 遊戲卡交換配對查詢 - 核心功能
 export async function findGameMatches(userId: number, limit = 3) {
   try {
+    console.log('🎯 開始遊戲卡配對，用戶 ID:', userId);
+    
+    // 配對邏輯：找到用戶「想要交換」的遊戲，配對其他用戶「持有」的同款遊戲
     const result = await sql`
       SELECT DISTINCT 
-        u.id as player_id,
-        u.email as player_email,
-        u.name as player_name,
-        g.title as game_title,
-        wanted_g.title as wanted_game,
-        g.image_url,
-        g.publisher,
-        owned.created_at
-      FROM user_games owned
-      JOIN users u ON owned.user_id = u.id
-      JOIN games g ON owned.game_id = g.id
-      JOIN user_games wanted ON wanted.user_id = ${userId}
-        AND wanted.status = 'wanted'
-        AND wanted.game_id = owned.game_id
-      JOIN games wanted_g ON wanted.game_id = wanted_g.id
-      WHERE owned.status = 'owned' 
-        AND owned.user_id != ${userId}
-      ORDER BY owned.created_at DESC
-      LIMIT 3
+        holder.user_id as holder_id,
+        holder_user.email as holder_email,
+        holder_user.name as holder_name,
+        game.title as game_title,
+        game.id as game_id,
+        holder.created_at as holder_added_at
+      FROM user_games seeker
+      JOIN games game ON seeker.game_id = game.id
+      JOIN user_games holder ON holder.game_id = seeker.game_id
+      JOIN users holder_user ON holder.user_id = holder_user.id
+      WHERE seeker.user_id = ${userId}
+        AND seeker.status = '想要交換'
+        AND holder.status = '持有'
+        AND holder.user_id != ${userId}
+      ORDER BY holder.created_at DESC
+      LIMIT ${limit}
     `;
     
-    return result.rows.slice(0, limit);
+    console.log('🎯 找到', result.rows.length, '個配對結果');
+    
+    return result.rows;
   } catch (error) {
     console.error('❌ 配對查詢失敗:', error);
+    throw error;
+  }
+}
+
+// 反向配對查詢：找到想要我持有遊戲的用戶
+export async function findReversematches(userId: number, limit = 3) {
+  try {
+    console.log('🔄 開始反向配對，用戶 ID:', userId);
+    
+    // 反向邏輯：找到其他用戶「想要交換」我「持有」的遊戲
+    const result = await sql`
+      SELECT DISTINCT 
+        seeker.user_id as seeker_id,
+        seeker_user.email as seeker_email,
+        seeker_user.name as seeker_name,
+        game.title as game_title,
+        game.id as game_id,
+        seeker.created_at as seeker_added_at
+      FROM user_games holder
+      JOIN games game ON holder.game_id = game.id
+      JOIN user_games seeker ON seeker.game_id = holder.game_id
+      JOIN users seeker_user ON seeker.user_id = seeker_user.id
+      WHERE holder.user_id = ${userId}
+        AND holder.status = '持有'
+        AND seeker.status = '想要交換'
+        AND seeker.user_id != ${userId}
+      ORDER BY seeker.created_at DESC
+      LIMIT ${limit}
+    `;
+    
+    console.log('🔄 找到', result.rows.length, '個反向配對結果');
+    
+    return result.rows;
+  } catch (error) {
+    console.error('❌ 反向配對查詢失敗:', error);
     throw error;
   }
 }

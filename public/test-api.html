@@ -109,8 +109,15 @@
         </div>
 
         <div class="section">
+            <h2>🎯 配對測試（PostgreSQL）</h2>
+            <button onclick="testMatching()">測試配對功能</button>
+            <button onclick="getMyGames()">查看我的遊戲</button>
+        </div>
+
+        <div class="section">
             <h2>🗄️ 資料庫管理</h2>
             <button onclick="checkDbStatus()">檢查資料庫狀態</button>
+            <button onclick="migrateDatabase()">執行資料庫遷移</button>
         </div>
 
         <div id="results"></div>
@@ -344,6 +351,53 @@
                 }
             } catch (error) {
                 addResult(`取得自訂遊戲列表錯誤: ${error.message}`, true);
+            }
+        }
+
+        async function testMatching() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/matching-pg');
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult(`🎯 配對結果:\n總配對數: ${data.data.summary.total}\n我想要的遊戲: ${data.data.summary.seeking}\n我持有的遊戲: ${data.data.summary.offering}\n\n配對詳情:\n${JSON.stringify(data.data.matches, null, 2)}`, false, true);
+                } else {
+                    addResult(`配對測試失敗: ${data.error}`, true);
+                }
+            } catch (error) {
+                addResult(`配對測試錯誤: ${error.message}`, true);
+            }
+        }
+
+        async function getMyGames() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/collections');
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult(`我的遊戲收藏 (${data.data.length} 個):\n${JSON.stringify(data.data, null, 2)}`, false, true);
+                } else {
+                    addResult(`取得收藏失敗: ${data.error}`, true);
+                }
+            } catch (error) {
+                addResult(`取得收藏錯誤: ${error.message}`, true);
+            }
+        }
+
+        async function migrateDatabase() {
+            try {
+                const response = await fetch('/api/db/migrate', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult(`資料庫遷移成功:\n${data.message}\n欄位: ${data.columns.join(', ')}`, false, true);
+                } else {
+                    addResult(`資料庫遷移失敗: ${data.error}`, true);
+                }
+            } catch (error) {
+                addResult(`資料庫遷移錯誤: ${error.message}`, true);
             }
         }
 
