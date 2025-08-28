@@ -60,7 +60,15 @@ export async function verifyAuthTokenAndGetUser(request: NextRequest) {
     // 第一步：驗證 Firebase JWT Token
     const decodedToken = await verifyAuthToken(request)
     if (!decodedToken) {
-      return { user: null, error: 'JWT Token 驗證失敗' }
+      // 如果 Firebase Admin 不可用，嘗試從 Authorization header 中解析基本資訊
+      const authHeader = request.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return { user: null, error: '缺少有效的授權 Token' }
+      }
+      
+      // 在這種情況下，我們需要另一種方式來驗證用戶
+      console.log('⚠️ Firebase Admin 不可用，使用備用驗證方式')
+      return { user: null, error: 'Firebase Admin 服務不可用' }
     }
 
     // 第二步：在 PostgreSQL 中查詢對應的用戶

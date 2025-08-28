@@ -2,8 +2,8 @@
 let adminDbInstance: any = null
 let adminAuthInstance: any = null
 
-// 檢查是否在構建時
-const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV
+// 檢查是否在構建時（只有在沒有環境變數時才跳過初始化）
+const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV && !process.env.FIREBASE_ADMIN_PROJECT_ID
 
 if (!isBuildTime && typeof window === 'undefined') {
   try {
