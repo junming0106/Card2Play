@@ -6,6 +6,12 @@ export interface UserCustomGame {
   id: string
   userId: string
   title: string
+  customTitle: string // 自定義標題
+  customPublisher?: string // 自定義發行商
+  publisher: string // 發行商
+  releaseDate: string // 發行日期
+  platform: string // 平台
+  media: string // 媒體類型
   createdAt: Date
   updatedAt: Date
   isCustom: true

@@ -54,34 +54,25 @@ export default function GameList({
     setDeletingGameId(gameId);
 
     try {
-      if (isCustomGame) {
-        // 刪除自定義遊戲
-        const response = await fetch(`/api/custom-games?gameId=${gameId}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${await user.getIdToken()}`,
-          },
-        });
+      // 統一使用 collections API 來刪除，因為所有遊戲（包括自定義遊戲）都存在收藏中
+      console.log('🗑️ 開始從收藏中移除遊戲:', gameId, '(自定義:', isCustomGame, ')');
+      
+      const response = await fetch(`/api/collections?gameId=${gameId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`,
+        },
+      });
 
-        if (response.ok) {
-          onUpdate();
-        } else {
-          alert("刪除失敗，請稍後再試");
-        }
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ 遊戲移除成功:', result);
+        alert(`成功${isCustomGame ? '刪除自定義遊戲' : '移除遊戲'}：${gameId}`);
+        onUpdate();
       } else {
-        // 從收藏中移除
-        const response = await fetch(`/api/collections?gameId=${gameId}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${await user.getIdToken()}`,
-          },
-        });
-
-        if (response.ok) {
-          onUpdate();
-        } else {
-          alert("移除失敗，請稍後再試");
-        }
+        const errorResult = await response.json();
+        console.error('❌ 遊戲移除失敗:', errorResult);
+        alert(`${isCustomGame ? '刪除' : '移除'}失敗：${errorResult.error || '請稍後再試'}`);
       }
     } catch (error) {
       alert("網路錯誤，請稍後再試");

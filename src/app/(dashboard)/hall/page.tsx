@@ -20,21 +20,41 @@ export default function HallPage() {
   const [error, setError] = useState("");
 
   const fetchMatches = async () => {
-    if (!user || refreshCount >= 3) return;
+    if (!user || refreshCount >= 3) {
+      console.log('❌ 配對請求被阻止:', { user: !!user, refreshCount });
+      return;
+    }
 
     setLoading(true);
     setError("");
 
     try {
       console.log('🎯 開始配對請求...');
+      console.log('👤 用戶狀態:', { 
+        uid: user.uid, 
+        email: user.email, 
+        emailVerified: user.emailVerified 
+      });
+      
+      if (!user.emailVerified) {
+        console.log('❌ 用戶電子郵件未驗證');
+        setError("請先驗證您的電子郵件");
+        return;
+      }
+      
       const idToken = await user.getIdToken();
       console.log('🎫 取得 Token，長度:', idToken.length);
+      console.log('🎫 Token 前20字:', idToken.substring(0, 20));
+      
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      };
+      console.log('📤 請求 Headers:', headers);
       
       const response = await fetch("/api/matching", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
+        method: "GET",
+        headers: headers,
       });
 
       console.log('📥 配對回應狀態:', response.status);
@@ -167,7 +187,7 @@ export default function HallPage() {
           <div className="mt-8 bg-gray-100 border-4 border-gray-400 p-4 transform rotate-1">
             <h3 className="text-lg font-black mb-2">💡 配對說明</h3>
             <ul className="font-bold text-sm text-gray-700 list-disc list-inside space-y-1">
-              <li>我們會尋找持有你「想要交換」遊戲的其他玩家</li>
+              <li>系統會尋找持有你「想要交換」遊戲的其他玩家</li>
               <li>每次配對最多顯示 3 個結果</li>
               <li>每日最多可以配對 3 次</li>
               <li>找到配對後可以聯繫對方進行交換</li>

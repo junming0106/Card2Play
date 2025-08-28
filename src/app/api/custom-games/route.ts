@@ -122,41 +122,70 @@ export async function POST(request: NextRequest) {
 // DELETE /api/custom-games - 刪除自定義遊戲
 export async function DELETE(request: NextRequest) {
   try {
+    console.log('🗑️ 開始刪除自定義遊戲...')
+    
     const user = await verifyAuthToken(request)
     if (!user) {
+      console.log('❌ 身份驗證失敗')
       return createErrorResponse('未經授權', 401)
     }
 
     const { searchParams } = new URL(request.url)
     const gameId = searchParams.get('gameId')
+    
+    console.log('📋 要刪除的遊戲 ID:', gameId)
+    console.log('👤 用戶 UID:', user.uid)
 
     if (!gameId) {
-      return createErrorResponse('缺少遊戲 ID')
+      console.log('❌ 缺少遊戲 ID 參數')
+      return createErrorResponse('缺少遊戲 ID', 400)
+    }
+
+    if (!gameId.startsWith('custom_')) {
+      console.log('❌ 無效的自定義遊戲 ID 格式')
+      return createErrorResponse('無效的自定義遊戲 ID 格式', 400)
     }
 
     // 檢查遊戲是否屬於該用戶
+    console.log('🔍 檢查自定義遊戲是否存在...')
     const customGameDoc = await adminDb
       .collection(`customGames/${user.uid}/games`)
       .doc(gameId)
       .get()
 
     if (!customGameDoc.exists) {
-      return createErrorResponse('找不到指定的自定義遊戲')
+      console.log('❌ 找不到指定的自定義遊戲')
+      return createErrorResponse('找不到指定的自定義遊戲', 404)
     }
 
+    const customGameData = customGameDoc.data()
+    console.log('✅ 找到自定義遊戲:', customGameData?.title || customGameData?.customTitle)
+
     // 同時從收藏中移除此遊戲
-    await adminDb
-      .collection(`collections/${user.uid}/games`)
-      .doc(gameId)
-      .delete()
+    console.log('🗑️ 從收藏中移除遊戲...')
+    try {
+      await adminDb
+        .collection(`collections/${user.uid}/games`)
+        .doc(gameId)
+        .delete()
+      console.log('✅ 已從收藏中移除')
+    } catch (collectionError) {
+      console.log('⚠️ 從收藏中移除失敗 (可能不存在):', collectionError)
+      // 不影響主要刪除流程
+    }
 
     // 刪除自定義遊戲
+    console.log('🗑️ 刪除自定義遊戲記錄...')
     await adminDb
       .collection(`customGames/${user.uid}/games`)
       .doc(gameId)
       .delete()
 
-    return createSuccessResponse(null, '自定義遊戲已刪除')
+    console.log('✅ 自定義遊戲刪除成功')
+    return createSuccessResponse({ 
+      gameId: gameId,
+      title: customGameData?.title || customGameData?.customTitle 
+    }, '自定義遊戲已刪除')
 
   } catch (error) {
     console.error('Error deleting custom game:', error)

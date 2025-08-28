@@ -10,7 +10,7 @@ interface MatchResult {
   playerId: string;
   playerEmail: string;
   gameTitle: string;
-  matchedGame: string; // 用戶想要交換的遊戲
+  matchedGame: string; // 我想要交換的遊戲
 }
 
 // GET /api/matching - 獲取配對結果
@@ -44,21 +44,22 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 用戶想要交換的遊戲:', userWantedGames.length, '款')
 
-    // 2. 尋找其他玩家持有的遊戲
+    // 2. 查詢其他用戶的持有中遊戲（改用簡單方式避免索引需求）
     const matches: MatchResult[] = []
-    let allCollectionsSnapshot;
     
     try {
-      // 先嘗試獲取所有collections文檔來找到其他用戶
-      const collectionsListSnapshot = await adminDb
+      console.log('🎯 尋找配對，想要的遊戲:', userWantedGames.map(g => g.gameTitle))
+      
+      // 獲取所有用戶的收藏文檔
+      const collectionsSnapshot = await adminDb
         .collection('collections')
-        .limit(20) // 限制用戶數量
+        .limit(50) // 限制查詢用戶數量
         .get()
 
-      console.log('🔍 找到', collectionsListSnapshot.size, '個用戶的收藏')
+      console.log('🔍 找到', collectionsSnapshot.size, '個用戶收藏')
       
-      // 遍歷每個用戶的收藏來尋找配對
-      for (const userCollectionDoc of collectionsListSnapshot.docs) {
+      // 遍歷每個用戶
+      for (const userCollectionDoc of collectionsSnapshot.docs) {
         const otherUserId = userCollectionDoc.id
         
         // 跳過當前用戶
@@ -66,59 +67,61 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // 獲取該用戶持有中的遊戲
+        // 簡單查詢：只按狀態過濾，避免複合索引
         const otherUserGamesSnapshot = await adminDb
           .collection(`collections/${otherUserId}/games`)
           .where('status', '==', '持有中')
+          .limit(100) // 限制每個用戶的遊戲數量
           .get()
           
-        console.log(`👤 用戶 ${otherUserId} 持有中遊戲:`, otherUserGamesSnapshot.size, '款')
-        
-        // 檢查配對
+        // 在應用層面進行遊戲名稱匹配
         for (const gameDoc of otherUserGamesSnapshot.docs) {
-          const otherPlayerGame = gameDoc.data()
+          const gameData = gameDoc.data()
           
-          // 檢查是否有配對
-          for (const wantedGame of userWantedGames) {
-            if (otherPlayerGame.gameTitle === wantedGame.gameTitle) {
+          // 檢查是否是用戶想要的遊戲
+          const matchedWantedGame = userWantedGames.find(
+            wantedGame => wantedGame.gameTitle === gameData.gameTitle
+          )
+          
+          if (matchedWantedGame) {
+            try {
               // 獲取其他玩家的資訊
+              let playerEmail = `玩家-${otherUserId.substring(0, 8)}`
               try {
-                let playerEmail = `玩家-${otherUserId.substring(0, 8)}`
-                try {
-                  const userRecord = await adminAuth.getUser(otherUserId)
-                  playerEmail = userRecord.email || playerEmail
-                } catch (authError) {
-                  console.log('無法獲取用戶信息:', otherUserId)
-                }
-
-                matches.push({
-                  playerId: otherUserId,
-                  playerEmail: playerEmail,
-                  gameTitle: otherPlayerGame.gameTitle,
-                  matchedGame: wantedGame.gameTitle
-                })
-
-                console.log('✅ 找到配對:', {
-                  player: playerEmail,
-                  has: otherPlayerGame.gameTitle,
-                  wants: wantedGame.gameTitle
-                })
-
-              } catch (error) {
-                console.log('❌ 處理配對失敗:', error)
+                const userRecord = await adminAuth.getUser(otherUserId)
+                playerEmail = userRecord.email || playerEmail
+              } catch (authError) {
+                console.log('無法獲取用戶信息:', otherUserId)
               }
 
-              // 限制最多3個配對結果
-              if (matches.length >= 3) {
-                break
-              }
+              matches.push({
+                playerId: otherUserId,
+                playerEmail: playerEmail,
+                gameTitle: gameData.gameTitle,
+                matchedGame: matchedWantedGame.gameTitle
+              })
+
+              console.log('✅ 找到配對:', {
+                player: playerEmail,
+                has: gameData.gameTitle,
+                wants: matchedWantedGame.gameTitle
+              })
+
+            } catch (error) {
+              console.log('❌ 處理配對失敗:', error)
+            }
+
+            // 限制最多3個配對結果
+            if (matches.length >= 3) {
+              break
             }
           }
-          
-          if (matches.length >= 3) break
         }
         
-        if (matches.length >= 3) break
+        // 如果已經找到足夠配對就停止查詢更多用戶
+        if (matches.length >= 3) {
+          break
+        }
       }
       
     } catch (collectionError) {
