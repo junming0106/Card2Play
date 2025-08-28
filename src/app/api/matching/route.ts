@@ -37,10 +37,11 @@ export async function GET(request: NextRequest) {
       return createSuccessResponse([], '您目前沒有設定想要交換的遊戲')
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userWantedGames = userWantedGamesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }))
+    })) as any[]
 
     console.log('📋 用戶想要交換的遊戲:', userWantedGames.length, '款')
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     const matches: MatchResult[] = []
     
     try {
-      console.log('🎯 尋找配對，想要的遊戲:', userWantedGames.map(g => g.id))
+      console.log('🎯 尋找配對，想要的遊戲:', userWantedGames.map(g => g.gameTitle || g.id))
       
       // 獲取所有用戶的收藏文檔
       const collectionsSnapshot = await adminDb
@@ -79,9 +80,8 @@ export async function GET(request: NextRequest) {
           const gameData = gameDoc.data()
           
           // 檢查是否是用戶想要的遊戲
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const matchedWantedGame = userWantedGames.find(
-            wantedGame => (wantedGame as any).gameTitle === (gameData as any).gameTitle
+            wantedGame => wantedGame.gameTitle === (gameData as any).gameTitle
           )
           
           if (matchedWantedGame) {
@@ -100,16 +100,14 @@ export async function GET(request: NextRequest) {
                 playerEmail: playerEmail,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 gameTitle: (gameData as any).gameTitle,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                matchedGame: (matchedWantedGame as any).gameTitle
+                matchedGame: matchedWantedGame.gameTitle
               })
 
               console.log('✅ 找到配對:', {
                 player: playerEmail,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 has: (gameData as any).gameTitle,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                wants: (matchedWantedGame as any).gameTitle
+                wants: matchedWantedGame.gameTitle
               })
 
             } catch (error) {
