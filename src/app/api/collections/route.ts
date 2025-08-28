@@ -4,15 +4,11 @@ import {
   verifyAuthToken,
   createSuccessResponse,
   createErrorResponse,
-  getSearchParams,
 } from '@/lib/utils/api'
 import { 
   CollectionItemExtended, 
   AddToCollectionRequest, 
   UpdateCollectionRequest,
-  CollectionStats,
-  CollectionStatus,
-  UserCustomGame
 } from '@/types/collection'
 
 // GET /api/collections - 取得用戶收藏
@@ -99,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 過濾掉 null 值，避免 Firestore 錯誤
-    const collectionData: any = {
+    const collectionData: Record<string, unknown> = {
       id: body.gameId,
       gameId: body.gameId,
       gameTitle: body.gameTitle,

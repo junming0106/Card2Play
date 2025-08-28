@@ -12,10 +12,11 @@ import { Game, CreateGameRequest } from '@/types/game'
 // GET /api/games - 取得遊戲列表
 export async function GET(request: NextRequest) {
   try {
-    const { page, limit, search, sortBy = 'createdAt', sortOrder, offset } = getSearchParams(request)
+    const { search, sortBy = 'createdAt', sortOrder, limit, page } = getSearchParams(request)
     
     // 建立查詢
-    let gamesRef = adminDb.collection('games')
+    const gamesRef = adminDb.collection('games')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = gamesRef as any
 
     // 搜尋過濾

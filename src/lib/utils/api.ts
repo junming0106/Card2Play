@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server'
 import { adminAuth } from '@/lib/firebase/admin'
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   message?: string
   error?: string
 }
 
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   success: boolean
   data: T[]
   pagination: {

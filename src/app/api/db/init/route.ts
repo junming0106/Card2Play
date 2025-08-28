@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 }
 
 // GET /api/db/init - 檢查資料庫狀態
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const { sql } = await import('@vercel/postgres')
     

@@ -30,7 +30,9 @@ export interface CreateGameRequest {
 }
 
 // 更新遊戲請求
-export interface UpdateGameRequest extends Partial<CreateGameRequest> {}
+export interface UpdateGameRequest extends Partial<CreateGameRequest> {
+  id?: string
+}
 
 // 遊戲搜尋參數
 export interface GameSearchParams {

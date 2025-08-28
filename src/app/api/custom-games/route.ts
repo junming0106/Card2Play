@@ -4,7 +4,6 @@ import {
   verifyAuthToken,
   createSuccessResponse,
   createErrorResponse,
-  getSearchParams,
 } from '@/lib/utils/api'
 import { CreateCustomGameRequest, UserCustomGame } from '@/types/collection'
 
@@ -16,10 +15,14 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('未經授權', 401)
     }
 
-    const { search, sortBy = 'createdAt', sortOrder = 'desc' } = getSearchParams(request)
+    const { searchParams } = new URL(request.url)
+    const search = searchParams.get('search') || ''
+    const sortBy = searchParams.get('sortBy') || 'createdAt'
+    const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'desc' | 'asc'
 
     // 建立查詢
-    let customGamesRef = adminDb.collection(`customGames/${user.uid}/games`)
+    const customGamesRef = adminDb.collection(`customGames/${user.uid}/games`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = customGamesRef as any
 
     // 搜尋過濾
@@ -33,6 +36,7 @@ export async function GET(request: NextRequest) {
     const customGamesQuery = query.orderBy(sortBy, sortOrder)
 
     const snapshot = await customGamesQuery.get()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const customGames: UserCustomGame[] = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),

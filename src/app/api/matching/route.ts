@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const matches: MatchResult[] = []
     
     try {
-      console.log('🎯 尋找配對，想要的遊戲:', userWantedGames.map(g => g.gameTitle))
+      console.log('🎯 尋找配對，想要的遊戲:', userWantedGames.map(g => g.id))
       
       // 獲取所有用戶的收藏文檔
       const collectionsSnapshot = await adminDb

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       customPublisher: body.customPublisher || '未知',
       publisher: body.customPublisher || '未知',
       releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],
-      imageUrl: null
+      imageUrl: undefined
     }
 
     const customGame = await createCustomGame(user.id, gameData)
