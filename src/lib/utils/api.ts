@@ -22,6 +22,12 @@ export interface PaginatedResponse<T = unknown> {
 // 驗證 Firebase ID Token
 export async function verifyAuthToken(request: NextRequest) {
   try {
+    // 檢查 Firebase Admin 是否可用
+    if (!adminAuth) {
+      console.warn('⚠️ Firebase Admin 不可用，跳過 Token 驗證')
+      return null
+    }
+
     const authHeader = request.headers.get('Authorization')
     console.log('🔍 Authorization Header:', authHeader ? 'Present' : 'null')
     
@@ -197,6 +203,10 @@ export function sanitizeString(input: string): string {
 // 檢查是否為管理員
 export async function isAdmin(uid: string): Promise<boolean> {
   try {
+    if (!adminAuth) {
+      console.warn('⚠️ Firebase Admin 不可用，無法檢查管理員權限')
+      return false
+    }
     const userRecord = await adminAuth.getUser(uid)
     return userRecord.customClaims?.admin === true
   } catch (error) {
@@ -208,6 +218,10 @@ export async function isAdmin(uid: string): Promise<boolean> {
 // 設定自訂聲明
 export async function setAdminClaim(uid: string, isAdmin: boolean) {
   try {
+    if (!adminAuth) {
+      console.warn('⚠️ Firebase Admin 不可用，無法設定自訂聲明')
+      return { error: new Error('Firebase Admin not available') }
+    }
     await adminAuth.setCustomUserClaims(uid, { admin: isAdmin })
     return { error: null }
   } catch (error) {

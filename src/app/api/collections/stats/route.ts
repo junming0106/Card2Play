@@ -24,14 +24,19 @@ export async function GET(request: NextRequest) {
       .collection(`collections/${user.uid}/games`)
       .get()
 
-    const collections = collectionsSnapshot.docs.map(doc => doc.data())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const collections = collectionsSnapshot.docs.map((doc: any) => doc.data())
     
     const stats: CollectionStats = {
       total: collections.length,
-      持有中: collections.filter(item => item.status === '持有中').length,
-      想要交換: collections.filter(item => item.status === '想要交換').length,
-      已借出: collections.filter(item => item.status === '已借出').length,
-      customGames: collections.filter(item => item.isCustomGame).length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      持有中: collections.filter((item: any) => item.status === '持有中').length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      想要交換: collections.filter((item: any) => item.status === '想要交換').length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      已借出: collections.filter((item: any) => item.status === '已借出').length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      customGames: collections.filter((item: any) => item.isCustomGame).length,
     }
 
     console.log('✅ 統計計算完成:', stats)
