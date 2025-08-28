@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       .orderBy('addedAt', 'desc')
       .get()
 
-    const collections: CollectionItemExtended[] = collectionsSnapshot.docs.map(doc => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const collections: CollectionItemExtended[] = collectionsSnapshot.docs.map((doc: any) => ({
       ...doc.data(),
       addedAt: doc.data().addedAt.toDate(),
       updatedAt: doc.data().updatedAt.toDate(),
