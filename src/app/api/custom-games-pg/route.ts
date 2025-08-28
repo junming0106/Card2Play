@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     // 驗證身份並取得用戶
     const authResult = await verifyAuthTokenAndGetUser(request)
     
-    // 如果標準驗證失敗，嘗試基本的 Firebase 驗證
+    // 如果標準驗證失敗，嘗試基本的 Firebase 驗證並自動建立用戶
     if (!authResult.user) {
       console.log('⚠️ PostgreSQL 用戶驗證失敗，嘗試基本 Firebase 驗證:', authResult.error)
       
@@ -24,31 +24,37 @@ export async function POST(request: NextRequest) {
         return createErrorResponse('未經授權', 401)
       }
       
-      // 使用 Firebase UID 作為臨時用戶 ID
       console.log('✅ 使用 Firebase 基本驗證成功:', decodedToken.uid)
-      const user = {
-        id: parseInt(decodedToken.uid.slice(-8), 36) || 1, // 將 UID 後8位轉為數字作為臨時 ID
-        email: decodedToken.email || 'unknown@user.com',
-        firebaseUid: decodedToken.uid,
-        name: decodedToken.name || 'User'
-      }
       
       // 驗證必要欄位
       if (!body.customTitle?.trim()) {
         return createErrorResponse('遊戲標題為必填欄位', 400)
       }
-      
-      // 建立自定義遊戲（使用臨時用戶資料）
-      const gameData = {
-        title: body.customTitle,
-        customTitle: body.customTitle,
-        customPublisher: body.customPublisher || '未知',
-        publisher: body.customPublisher || '未知',
-        releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],
-        imageUrl: undefined
-      }
 
       try {
+        // 嘗試在 PostgreSQL 中建立或取得用戶
+        const { createOrUpdateUser } = await import('@/lib/database')
+        
+        const googleId = decodedToken.uid
+        const email = decodedToken.email || 'unknown@user.com'
+        const name = decodedToken.name || decodedToken.email?.split('@')[0] || 'User'
+        const avatarUrl = decodedToken.picture || undefined
+        
+        console.log('👤 自動建立/更新用戶:', { googleId, email, name })
+        const user = await createOrUpdateUser(googleId, email, name, avatarUrl)
+        
+        console.log('✅ 用戶建立/更新成功:', user.id)
+        
+        // 建立自定義遊戲
+        const gameData = {
+          title: body.customTitle,
+          customTitle: body.customTitle,
+          customPublisher: body.customPublisher || '未知',
+          publisher: body.customPublisher || '未知',
+          releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],
+          imageUrl: undefined
+        }
+
         const customGame = await createCustomGame(user.id, gameData)
         
         console.log('✅ 自定義遊戲建立成功:', customGame.title)
@@ -65,9 +71,10 @@ export async function POST(request: NextRequest) {
             createdAt: customGame.created_at
           }
         }, '自定義遊戲建立成功')
+        
       } catch (dbError) {
         console.error('💥 資料庫操作失敗:', dbError)
-        return createErrorResponse('資料庫連線失敗', 500)
+        return createErrorResponse(`資料庫操作失敗: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`, 500)
       }
     }
 

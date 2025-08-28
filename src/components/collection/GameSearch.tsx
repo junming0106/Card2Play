@@ -15,6 +15,21 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
   const [filteredGames, setFilteredGames] = useState<NintendoSwitchGame[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [gameService] = useState(() => GameDataService.getInstance());
+  const [isServiceReady, setIsServiceReady] = useState(false);
+
+  // 初始化遊戲服務
+  useEffect(() => {
+    const initializeService = async () => {
+      try {
+        await gameService.loadGames();
+        setIsServiceReady(true);
+      } catch (error) {
+        console.error('❌ 遊戲服務初始化失敗:', error);
+      }
+    };
+
+    initializeService();
+  }, [gameService]);
 
   const filterGames = useCallback(async () => {
     if (!searchTerm.trim()) {
@@ -22,10 +37,21 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
       return;
     }
 
-    // 使用高效能遊戲服務進行搜尋
-    const results = gameService.searchGames(searchTerm, 15);
-    setFilteredGames(results);
-  }, [searchTerm, gameService]);
+    if (!isServiceReady) {
+      console.warn('⚠️ 遊戲服務尚未就緒');
+      setFilteredGames([]);
+      return;
+    }
+
+    try {
+      // 使用高效能遊戲服務進行搜尋
+      const results = gameService.searchGames(searchTerm, 15);
+      setFilteredGames(results);
+    } catch (error) {
+      console.error('❌ 搜尋遊戲時發生錯誤:', error);
+      setFilteredGames([]);
+    }
+  }, [searchTerm, gameService, isServiceReady]);
 
   useEffect(() => {
     // 防抖功能：延遲搜尋以提升效能
@@ -63,8 +89,8 @@ export default function GameSearch({ games, onSelectGame, disabled = false }: Ga
           value={searchTerm}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          disabled={disabled}
-          placeholder="搜尋遊戲名稱..."
+          disabled={disabled || !isServiceReady}
+          placeholder={!isServiceReady ? "正在載入遊戲資料..." : "搜尋遊戲名稱..."}
           className="w-full p-2 sm:p-4 border-2 sm:border-4 border-black font-bold text-sm sm:text-lg bg-white placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
         />
         <div className="absolute right-4 top-1/2 transform -translate-y-1/2">

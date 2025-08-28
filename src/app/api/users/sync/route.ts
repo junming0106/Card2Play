@@ -7,11 +7,21 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔄 開始用戶同步...')
     
-    // 驗證 Firebase JWT Token
+    // 驗證 Firebase JWT Token - 使用備用機制
     const decodedToken = await verifyAuthToken(request)
     if (!decodedToken) {
-      console.log('❌ 身份驗證失敗')
-      return createErrorResponse('未經授權', 401)
+      console.log('❌ Firebase Admin 身份驗證失敗')
+      
+      // 檢查基本的 Authorization header
+      const authHeader = request.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('❌ 缺少有效的 Authorization header')
+        return createErrorResponse('未經授權', 401)
+      }
+      
+      console.log('⚠️ Firebase Admin 不可用，但 Authorization header 存在')
+      // 在這種情況下，我們無法驗證 Token，但可以嘗試基本處理
+      return createErrorResponse('Firebase 驗證服務不可用，請稍後再試', 503)
     }
 
     console.log('✅ JWT 驗證成功，UID:', decodedToken.uid)
@@ -59,10 +69,18 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 檢查用戶同步狀態...')
     
-    // 驗證 Firebase JWT Token
+    // 驗證 Firebase JWT Token - 使用備用機制
     const decodedToken = await verifyAuthToken(request)
     if (!decodedToken) {
-      return createErrorResponse('未經授權', 401)
+      console.log('❌ Firebase Admin 身份驗證失敗')
+      
+      // 檢查基本的 Authorization header
+      const authHeader = request.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return createErrorResponse('未經授權', 401)
+      }
+      
+      return createErrorResponse('Firebase 驗證服務不可用', 503)
     }
 
     const googleId = decodedToken.uid

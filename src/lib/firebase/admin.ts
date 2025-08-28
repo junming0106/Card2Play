@@ -2,7 +2,7 @@
 let adminDbInstance: any = null
 let adminAuthInstance: any = null
 
-// 檢查是否在構建時（只有在沒有環境變數時才跳過初始化）
+// 檢查是否在構建時
 const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV && !process.env.FIREBASE_ADMIN_PROJECT_ID
 
 if (!isBuildTime && typeof window === 'undefined') {
@@ -14,31 +14,47 @@ if (!isBuildTime && typeof window === 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { getAuth } = require('firebase-admin/auth')
 
-    // 檢查是否已經初始化過
-    if (!getApps().length) {
-      const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
-      
-      if (process.env.FIREBASE_ADMIN_PROJECT_ID && 
-          process.env.FIREBASE_ADMIN_CLIENT_EMAIL && 
-          privateKey) {
+    // 確保環境變數存在
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+
+    console.log('🔧 Firebase Admin 環境檢查:', {
+      projectId: !!projectId,
+      clientEmail: !!clientEmail,
+      privateKey: !!(privateKey && privateKey.length > 100),
+      appsLength: getApps().length
+    })
+
+    if (!projectId || !clientEmail || !privateKey) {
+      console.warn('⚠️ Firebase Admin 環境變數不完整，跳過初始化')
+    } else {
+      // 檢查是否已經初始化過
+      if (!getApps().length) {
+        console.log('🚀 初始化 Firebase Admin...')
         initializeApp({
           credential: cert({
-            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-            privateKey: privateKey,
+            projectId,
+            clientEmail,
+            privateKey,
           }),
         })
 
         adminDbInstance = getFirestore()
         adminAuthInstance = getAuth()
+        console.log('✅ Firebase Admin 初始化成功')
+      } else {
+        console.log('♻️ 使用現有的 Firebase Admin 實例')
+        adminDbInstance = getFirestore()
+        adminAuthInstance = getAuth()
       }
-    } else {
-      adminDbInstance = getFirestore()
-      adminAuthInstance = getAuth()
     }
   } catch (error) {
-    console.warn('Firebase Admin initialization skipped:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('❌ Firebase Admin 初始化失敗:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('詳細錯誤:', error)
   }
+} else {
+  console.log('⏩ 跳過 Firebase Admin 初始化 (構建時或客戶端)')
 }
 
 // 導出實例或 null（構建時）
