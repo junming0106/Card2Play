@@ -99,34 +99,107 @@ export async function createOrUpdateUser(
   name?: string,
   avatarUrl?: string
 ) {
+  // 輸入驗證
+  if (!googleId || !email) {
+    throw new Error('googleId 和 email 為必填欄位')
+  }
+
+  // 清理輸入資料
+  const cleanGoogleId = googleId.trim()
+  const cleanEmail = email.trim().toLowerCase()
+  const cleanName = name?.trim() || null
+  const cleanAvatarUrl = avatarUrl?.trim() || null
+
+  // 基本格式驗證
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    console.warn('⚠️ 電子郵件格式可能不正確:', cleanEmail)
+    // 不阻止建立，因為可能是特殊情況
+  }
+
   try {
+    console.log('📝 建立/更新用戶:', { 
+      googleId: cleanGoogleId, 
+      email: cleanEmail, 
+      name: cleanName 
+    })
+
     const result = await sql`
-      INSERT INTO users (google_id, email, name, avatar_url)
-      VALUES (${googleId}, ${email}, ${name || null}, ${avatarUrl || null})
+      INSERT INTO users (google_id, email, name, avatar_url, created_at, updated_at)
+      VALUES (${cleanGoogleId}, ${cleanEmail}, ${cleanName}, ${cleanAvatarUrl}, NOW(), NOW())
       ON CONFLICT (google_id) 
       DO UPDATE SET 
         email = EXCLUDED.email,
-        name = EXCLUDED.name,
-        avatar_url = EXCLUDED.avatar_url,
+        name = COALESCE(NULLIF(EXCLUDED.name, ''), users.name),
+        avatar_url = COALESCE(NULLIF(EXCLUDED.avatar_url, ''), users.avatar_url),
         updated_at = NOW()
       RETURNING *
     `;
-    return result.rows[0];
+
+    if (result.rows.length === 0) {
+      throw new Error('用戶建立/更新操作未返回結果')
+    }
+
+    const user = result.rows[0]
+    console.log('✅ 用戶建立/更新成功:', { 
+      id: user.id, 
+      email: user.email, 
+      name: user.name,
+      isNew: user.created_at === user.updated_at 
+    })
+
+    return user
   } catch (error) {
-    console.error("❌ 用戶建立/更新失敗:", error);
-    throw error;
+    console.error('❌ 用戶建立/更新失敗:', {
+      googleId: cleanGoogleId,
+      email: cleanEmail,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+
+    // 檢查是否是唯一約束衝突
+    if (error instanceof Error && error.message.includes('unique')) {
+      console.log('🔄 檢測到唯一約束衝突，嘗試查詢現有用戶')
+      try {
+        const existingUser = await getUserByGoogleId(cleanGoogleId)
+        if (existingUser) {
+          console.log('✅ 找到現有用戶，返回現有資料')
+          return existingUser
+        }
+      } catch (queryError) {
+        console.error('❌ 查詢現有用戶失敗:', queryError)
+      }
+    }
+
+    throw error
   }
 }
 
 export async function getUserByGoogleId(googleId: string) {
+  if (!googleId) {
+    throw new Error('googleId 為必填欄位')
+  }
+
+  const cleanGoogleId = googleId.trim()
+  
   try {
+    console.log('🔍 查詢用戶:', cleanGoogleId)
     const result = await sql`
-      SELECT * FROM users WHERE google_id = ${googleId}
+      SELECT * FROM users WHERE google_id = ${cleanGoogleId}
     `;
-    return result.rows[0] || null;
+    
+    const user = result.rows[0] || null
+    if (user) {
+      console.log('✅ 找到用戶:', { id: user.id, email: user.email })
+    } else {
+      console.log('⚠️ 未找到用戶:', cleanGoogleId)
+    }
+    
+    return user
   } catch (error) {
-    console.error("❌ 用戶查詢失敗:", error);
-    throw error;
+    console.error('❌ 用戶查詢失敗:', {
+      googleId: cleanGoogleId,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+    throw error
   }
 }
 
