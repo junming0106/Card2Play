@@ -30,6 +30,10 @@ export interface UserProfile {
 
 // Email 登入
 export const signInWithEmail = async (email: string, password: string) => {
+  if (!auth) {
+    throw new Error('Firebase 未初始化，無法進行登入')
+  }
+  
   try {
     console.log('嘗試 Email 登入:', email)
     const result = await signInWithEmailAndPassword(auth, email, password)
@@ -62,6 +66,10 @@ export const signUpWithEmail = async (
   password: string,
   displayName: string
 ) => {
+  if (!auth) {
+    throw new Error('Firebase 未初始化，無法進行註冊')
+  }
+  
   try {
     console.log('嘗試 Email 註冊:', email, '密碼長度:', password.length)
     const result = await createUserWithEmailAndPassword(auth, email, password)
@@ -89,6 +97,10 @@ export const signUpWithEmail = async (
 
 // Google 登入
 export const signInWithGoogle = async () => {
+  if (!auth) {
+    throw new Error('Firebase 未初始化，無法進行 Google 登入')
+  }
+  
   try {
     const result = await signInWithPopup(auth, googleProvider)
     
@@ -139,7 +151,9 @@ const createUserProfileAsync = async (user: User) => {
 // 登出
 export const signOutUser = async () => {
   try {
-    await signOut(auth)
+    if (auth) {
+      await signOut(auth)
+    }
     // 清除所有認證相關的 cookies
     clearAuthCookies()
     console.log('已登出並清除認證 cookies')
@@ -151,6 +165,10 @@ export const signOutUser = async () => {
 
 // 重置密碼
 export const resetPassword = async (email: string) => {
+  if (!auth) {
+    throw new Error('Firebase 未初始化，無法重置密碼')
+  }
+  
   try {
     await sendPasswordResetEmail(auth, email)
     return { error: null }
@@ -161,11 +179,22 @@ export const resetPassword = async (email: string) => {
 
 // 監聽認證狀態變化
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
+  if (!auth) {
+    console.warn('Firebase 未初始化，無法監聽認證狀態')
+    // 立即回調 null，表示沒有用戶登入
+    callback(null)
+    // 返回空的取消訂閱函數
+    return () => {}
+  }
   return onAuthStateChanged(auth, callback)
 }
 
 // 取得目前用戶
 export const getCurrentUser = (): User | null => {
+  if (!auth) {
+    console.warn('Firebase 未初始化，無法取得用戶資訊')
+    return null
+  }
   return auth.currentUser
 }
 
@@ -183,6 +212,10 @@ export const updateUserProfile = async (uid: string, updates: Partial<UserProfil
 
 // 發送驗證郵件
 export const sendVerificationEmail = async (): Promise<{ error: Error | null }> => {
+  if (!auth) {
+    return { error: new Error('Firebase 未初始化，無法發送驗證郵件') }
+  }
+  
   try {
     const user = auth.currentUser
     if (!user) {
@@ -200,6 +233,10 @@ export const sendVerificationEmail = async (): Promise<{ error: Error | null }> 
 
 // 重新載入用戶資料
 export const reloadUser = async (): Promise<{ error: Error | null }> => {
+  if (!auth) {
+    return { error: new Error('Firebase 未初始化，無法重新載入用戶資料') }
+  }
+  
   try {
     const user = auth.currentUser
     if (!user) {
