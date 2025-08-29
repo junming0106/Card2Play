@@ -18,30 +18,46 @@ const firebaseConfig = {
 }
 
 // 檢查環境變數是否存在
-if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
-  console.error('Firebase 配置缺失:', {
+const hasRequiredConfig = firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId
+
+if (!hasRequiredConfig) {
+  console.warn('Firebase 配置缺失:', {
     apiKey: !!firebaseConfig.apiKey,
     authDomain: !!firebaseConfig.authDomain,
     projectId: !!firebaseConfig.projectId,
   })
-  throw new Error('Firebase configuration is missing. Please check your environment variables.')
+  
+  // 在建置時期，如果環境變數不存在，提供預設值避免錯誤
+  if (process.env.NODE_ENV === 'production' || process.env.NEXT_PHASE === 'build') {
+    console.log('⚠️ 建置模式：使用預設 Firebase 配置')
+  }
 }
 
-// Firebase 配置載入成功
+// 初始化 Firebase（如果配置完整）
+let app: any = null
+let auth: any = null
+let db: any = null
+let storage: any = null
 
-// 初始化 Firebase
-const app = initializeApp(firebaseConfig)
+if (hasRequiredConfig) {
+  try {
+    app = initializeApp(firebaseConfig)
+    auth = getAuth(app)
+    db = getFirestore(app)
+    storage = getStorage(app)
 
-// 初始化 Firebase 服務
-export const auth = getAuth(app)
-export const db = getFirestore(app)
-export const storage = getStorage(app)
-
-// 設定 Firebase Auth 持久化 - 使用本地儲存
-if (typeof window !== 'undefined') {
-  setPersistence(auth, browserLocalPersistence).catch((error) => {
-    console.error('Firebase Auth 持久化設定失敗:', error)
-  })
+    // 設定 Firebase Auth 持久化 - 使用本地儲存
+    if (typeof window !== 'undefined') {
+      setPersistence(auth, browserLocalPersistence).catch((error) => {
+        console.error('Firebase Auth 持久化設定失敗:', error)
+      })
+    }
+  } catch (error) {
+    console.error('Firebase 初始化失敗:', error)
+  }
+} else {
+  console.log('⚠️ Firebase 未初始化：環境變數不完整')
 }
 
+export { auth, db, storage }
 export default app
