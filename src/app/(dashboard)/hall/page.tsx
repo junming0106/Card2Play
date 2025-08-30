@@ -11,8 +11,12 @@ interface MatchResult {
   playerName: string;
   gameTitle: string;
   gameId: number;
-  matchType: 'seeking' | 'offering';
+  matchType: "seeking" | "offering";
   addedAt: string;
+  sessionId?: number; // 如果有 sessionId 表示這是配對成功記錄
+  status?: string; // 配對成功記錄的狀態
+  notes?: string; // 配對成功記錄的備註
+  isHistoryRecord?: boolean; // 如果是配對歷史記錄（來自 last_match_games）
 }
 
 interface MatchingStatus {
@@ -33,15 +37,18 @@ interface MatchingStatus {
 
 export default function HallPage() {
   const { user } = useAuth();
-  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(null);
+  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [showNoWantGameModal, setShowNoWantGameModal] = useState(false);
 
   // 初始載入用戶配對狀態
   React.useEffect(() => {
     if (user && user.emailVerified) {
-      console.log('🚀 頁面載入，自動獲取配對狀態...');
+      console.log("🚀 頁面載入，自動獲取配對狀態...");
       fetchMatchingStatus();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,9 +58,9 @@ export default function HallPage() {
   React.useEffect(() => {
     if (countdown > 0) {
       const timer = setInterval(() => {
-        setCountdown(prev => Math.max(0, prev - 1));
+        setCountdown((prev) => Math.max(0, prev - 1));
       }, 1000);
-      
+
       return () => clearInterval(timer);
     }
   }, [countdown]);
@@ -63,7 +70,50 @@ export default function HallPage() {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // 檢查用戶是否有「想要交換」的遊戲
+  const checkUserHasWantToTradeGames = async () => {
+    if (!user) return false;
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/collections-pg", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const collections = result.data || [];
+
+        // 檢查是否有狀態為「想要交換」的遊戲
+        const hasWantToTradeGames = collections.some(
+          (game: any) => game.status === "想要交換"
+        );
+        console.log("🔍 檢查用戶遊戲狀態:", {
+          totalGames: collections.length,
+          hasWantToTradeGames,
+          wantToTradeCount: collections.filter(
+            (game: any) => game.status === "想要交換"
+          ).length,
+        });
+
+        return hasWantToTradeGames;
+      } else {
+        console.error("❌ 獲取用戶收藏失敗:", response.status);
+        return false;
+      }
+    } catch (error) {
+      console.error("💥 檢查用戶遊戲收藏錯誤:", error);
+      return false;
+    }
   };
 
   // 獲取配對狀態（不進行新配對）
@@ -78,7 +128,7 @@ export default function HallPage() {
 
     try {
       console.log("📊 獲取配對狀態...");
-      
+
       if (!user.emailVerified) {
         console.log("❌ 用戶電子郵件未驗證");
         setError("請先驗證您的電子郵件");
@@ -100,36 +150,35 @@ export default function HallPage() {
       if (response.ok) {
         const result = await response.json();
         console.log("✅ 配對狀態:", result);
-        
+
         const status: MatchingStatus = {
           matches: result.data?.matches || [],
           rateLimited: result.data?.rateLimited || false,
           matchesUsed: result.data?.matchesUsed || 0,
           matchesRemaining: result.data?.matchesRemaining || 0,
           secondsUntilReset: result.data?.secondsUntilReset || 0,
-          nextResetTime: result.data?.nextResetTime || '',
+          nextResetTime: result.data?.nextResetTime || "",
           recentMatches: result.data?.recentMatches || null,
-          historyInfo: result.data?.historyInfo || null
+          historyInfo: result.data?.historyInfo || null,
         };
-        
+
         setMatchingStatus(status);
-        
+
         // 記錄歷史記錄信息
         if (status.historyInfo?.isHistorical) {
-          console.log('📋 載入歷史記錄:', {
+          console.log("📋 載入歷史記錄:", {
             matchCount: status.matches.length,
             lastMatchAt: status.historyInfo.lastMatchAt,
-            remainingMinutes: status.historyInfo.remainingMinutes
+            remainingMinutes: status.historyInfo.remainingMinutes,
           });
         }
-        
+
         // 設定倒數計時器 - 只有配對餘額不滿3時才開始倒數
         if (status.secondsUntilReset > 0 && status.matchesRemaining < 3) {
           setCountdown(status.secondsUntilReset);
         } else {
           setCountdown(0); // 重置倒數計時器
         }
-        
       } else {
         const result = await response.json();
         console.log("❌ 獲取狀態失敗:", result);
@@ -149,6 +198,17 @@ export default function HallPage() {
       return;
     }
 
+    // 先檢查用戶是否有「想要交換」的遊戲
+    console.log("🔍 檢查用戶是否有想要交換的遊戲...");
+    const hasWantToTradeGames = await checkUserHasWantToTradeGames();
+
+    if (!hasWantToTradeGames) {
+      console.log("⚠️ 用戶沒有想要交換的遊戲，顯示提醒");
+      setShowNoWantGameModal(true);
+      return;
+    }
+
+    console.log("✅ 用戶有想要交換的遊戲，繼續配對流程");
     setLoading(true);
     setError("");
 
@@ -184,27 +244,26 @@ export default function HallPage() {
       if (response.ok) {
         const result = await response.json();
         console.log("✅ 配對回應:", result);
-        
+
         const status: MatchingStatus = {
           matches: result.data?.matches || [],
           rateLimited: result.data?.rateLimited || false,
           matchesUsed: result.data?.matchesUsed || 0,
           matchesRemaining: result.data?.matchesRemaining || 0,
           secondsUntilReset: result.data?.secondsUntilReset || 0,
-          nextResetTime: result.data?.nextResetTime || '',
+          nextResetTime: result.data?.nextResetTime || "",
           recentMatches: result.data?.recentMatches || null,
-          historyInfo: result.data?.historyInfo || null
+          historyInfo: result.data?.historyInfo || null,
         };
-        
+
         setMatchingStatus(status);
-        
+
         // 設定倒數計時器 - 只有配對餘額不滿3時才開始倒數
         if (status.secondsUntilReset > 0 && status.matchesRemaining < 3) {
           setCountdown(status.secondsUntilReset);
         } else {
           setCountdown(0); // 重置倒數計時器
         }
-        
       } else {
         const result = await response.json();
         console.log("❌ 配對失敗:", result);
@@ -215,6 +274,42 @@ export default function HallPage() {
       setError("網路錯誤，請稍後再試");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 創建配對成功記錄
+  const createMatchRecord = async (match: MatchResult) => {
+    if (!user) return;
+
+    try {
+      console.log("🎯 創建配對成功記錄:", match);
+
+      const idToken = await user.getIdToken();
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      };
+
+      const response = await fetch("/api/match-sessions", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          holderUserId: match.playerId,
+          gameId: match.gameId,
+          notes: `配對遊戲: ${match.gameTitle}`,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ 配對記錄創建成功:", result);
+        return result.data.matchSession;
+      } else {
+        const result = await response.json();
+        console.log("❌ 配對記錄創建失敗:", result);
+      }
+    } catch (error) {
+      console.error("💥 創建配對記錄錯誤:", error);
     }
   };
 
@@ -244,13 +339,15 @@ export default function HallPage() {
               <div className="inline-block bg-purple-500 text-white px-3 sm:px-4 py-1 sm:py-2 border-2 sm:border-4 border-black font-black text-sm sm:text-base transform rotate-2">
                 配對次數: {matchingStatus?.matchesUsed || 0}/3
               </div>
-              
+
               {/* 倒數計時器 - 只有配對餘額不滿3時才顯示 */}
-              {matchingStatus && countdown > 0 && matchingStatus.matchesRemaining < 3 && (
-                <div className="mt-2 inline-block bg-red-500 text-white px-3 py-1 border-2 border-black font-bold text-sm transform -rotate-1">
-                  🕐 重置倒數: {formatCountdown(countdown)}
-                </div>
-              )}
+              {matchingStatus &&
+                countdown > 0 &&
+                matchingStatus.matchesRemaining < 3 && (
+                  <div className="mt-2 inline-block bg-red-500 text-white px-3 py-1 border-2 border-black font-bold text-sm transform -rotate-1">
+                    🕐 重置倒數: {formatCountdown(countdown)}
+                  </div>
+                )}
             </div>
           </header>
 
@@ -266,7 +363,7 @@ export default function HallPage() {
             <div className="mb-6 text-center">
               <button
                 onClick={fetchMatches}
-                disabled={loading || (matchingStatus?.rateLimited || false)}
+                disabled={loading || matchingStatus?.rateLimited || false}
                 className="bg-green-500 text-white border-4 border-black px-6 py-3 font-black text-lg hover:bg-green-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000] disabled:opacity-50"
               >
                 {loading
@@ -275,7 +372,7 @@ export default function HallPage() {
                   ? "🎯 開始配對"
                   : "🔄 重新配對"}
               </button>
-              
+
               {matchingStatus && matchingStatus.matchesRemaining > 0 && (
                 <p className="mt-2 font-bold text-gray-700 text-sm">
                   剩餘 {matchingStatus.matchesRemaining} 次配對機會
@@ -283,28 +380,36 @@ export default function HallPage() {
               )}
             </div>
           )}
-          
+
           {/* 配對用完提示 */}
-          {matchingStatus?.rateLimited && matchingStatus.matchesRemaining < 3 && (
-            <div className="mb-6 bg-orange-100 border-4 border-orange-500 p-4 text-center transform rotate-1">
-              <h3 className="text-lg font-black text-orange-800 mb-2">🚫 配對次數已用完</h3>
-              <p className="font-bold text-orange-700">
-                {countdown > 0 ? `${formatCountdown(countdown)} 後重置` : '即將重置...'}
-              </p>
-            </div>
-          )}
+          {matchingStatus?.rateLimited &&
+            matchingStatus.matchesRemaining < 3 && (
+              <div className="mb-6 bg-orange-100 border-4 border-orange-500 p-4 text-center transform rotate-1">
+                <h3 className="text-lg font-black text-orange-800 mb-2">
+                  🚫 配對次數已用完
+                </h3>
+                <p className="font-bold text-orange-700">
+                  {countdown > 0
+                    ? `${formatCountdown(countdown)} 後重置`
+                    : "即將重置..."}
+                </p>
+              </div>
+            )}
 
           {/* 歷史記錄即將過期提示 */}
-          {matchingStatus?.historyInfo?.isHistorical && 
-           matchingStatus.historyInfo.remainingMinutes <= 10 && 
-           matchingStatus.historyInfo.remainingMinutes > 0 && (
-            <div className="mb-6 bg-yellow-100 border-4 border-yellow-500 p-4 text-center transform -rotate-1">
-              <h3 className="text-lg font-black text-yellow-800 mb-2">⚠️ 歷史記錄即將過期</h3>
-              <p className="font-bold text-yellow-700">
-                配對記錄將在 {matchingStatus.historyInfo.remainingMinutes} 分鐘後清除
-              </p>
-            </div>
-          )}
+          {matchingStatus?.historyInfo?.isHistorical &&
+            matchingStatus.historyInfo.remainingMinutes <= 10 &&
+            matchingStatus.historyInfo.remainingMinutes > 0 && (
+              <div className="mb-6 bg-yellow-100 border-4 border-yellow-500 p-4 text-center transform -rotate-1">
+                <h3 className="text-lg font-black text-yellow-800 mb-2">
+                  ⚠️ 歷史記錄即將過期
+                </h3>
+                <p className="font-bold text-yellow-700">
+                  配對記錄將在 {matchingStatus.historyInfo.remainingMinutes}{" "}
+                  分鐘後清除
+                </p>
+              </div>
+            )}
 
           {/* 配對結果 */}
           {matchingStatus && matchingStatus.matches.length > 0 ? (
@@ -314,11 +419,12 @@ export default function HallPage() {
                   <>
                     📋 歷史配對記錄 ({matchingStatus.matches.length} 個)
                     <div className="text-sm font-bold text-orange-600 mt-2">
-                      ⏰ 剩餘 {matchingStatus.historyInfo.remainingMinutes} 分鐘有效
+                      ⏰ 剩餘 {matchingStatus.historyInfo.remainingMinutes}{" "}
+                      分鐘有效
                     </div>
                   </>
                 ) : matchingStatus.rateLimited ? (
-                  '🎮 之前配對結果'
+                  "🎮 之前配對結果"
                 ) : (
                   `🎮 找到 ${matchingStatus.matches.length} 個配對！`
                 )}
@@ -327,20 +433,35 @@ export default function HallPage() {
                 {matchingStatus.matches.map((match, index) => (
                   <div
                     key={`${match.playerId}-${match.gameId}-${index}`}
-                    className="bg-white border-4 border-black p-4 shadow-[4px_4px_0px_#000000] transform hover:scale-105 transition-transform"
+                    className={`p-4 shadow-[4px_4px_0px_#000000] transform hover:scale-105 transition-transform ${
+                      match.sessionId
+                        ? "bg-green-50 border-4 border-green-500" // 配對成功記錄用綠色邊框
+                        : "bg-white border-4 border-black" // 普通配對結果用黑色邊框
+                    }`}
                   >
+                    {/* 配對成功標識 */}
+                    {match.sessionId && (
+                      <div className="inline-block px-2 py-1 bg-green-500 text-white border-2 border-black font-bold text-xs mb-2 transform -rotate-1">
+                        ✅ 已發起交換
+                      </div>
+                    )}
+
                     {/* 遊戲標題 */}
                     <h3 className="font-black text-lg mb-2 line-clamp-2">
                       {match.gameTitle}
                     </h3>
 
                     {/* 配對狀態標籤 */}
-                    <div className={`inline-block px-3 py-1 border-2 border-black font-bold text-sm mb-3 ${
-                      match.matchType === 'seeking' 
-                        ? 'bg-green-400 text-green-900' 
-                        : 'bg-blue-400 text-blue-900'
-                    }`}>
-                      {match.matchType === 'seeking' ? '🔍 想要的遊戲' : '🎁 持有的遊戲'}
+                    <div
+                      className={`inline-block px-3 py-1 border-2 border-black font-bold text-sm mb-3 ${
+                        match.matchType === "seeking"
+                          ? "bg-green-400 text-green-900"
+                          : "bg-blue-400 text-blue-900"
+                      }`}
+                    >
+                      {match.matchType === "seeking"
+                        ? "🔍 想要的遊戲"
+                        : "🎁 持有的遊戲"}
                     </div>
 
                     {/* 玩家資訊 */}
@@ -355,28 +476,63 @@ export default function HallPage() {
 
                     {/* 配對說明 */}
                     <div className="text-xs font-bold text-gray-500 mb-4">
-                      {match.matchType === 'seeking' 
-                        ? '🎯 對方持有你想要的遊戲' 
-                        : '💎 對方想要你持有的遊戲'}
+                      {match.matchType === "seeking"
+                        ? "🎯 對方持有你想要的遊戲"
+                        : "💎 對方想要你持有的遊戲"}
                     </div>
 
                     {/* 操作按鈕 */}
                     <div className="flex gap-2">
-                      <button 
-                        onClick={() => window.open(`mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我對您的「${match.gameTitle}」遊戲有興趣，想討論交換的可能性。`)}
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我對您的「${match.gameTitle}」遊戲有興趣，想討論交換的可能性。`
+                          )
+                        }
                         className="flex-1 bg-blue-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-blue-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
                       >
                         📧 聯繫
                       </button>
-                      <button 
-                        onClick={() => {
-                          const message = `您好！我想要交換「${match.gameTitle}」這款遊戲，請問您有興趣嗎？我們可以討論交換的細節。`;
-                          window.open(`mailto:${match.playerEmail}?subject=遊戲交換提議：${match.gameTitle}&body=${encodeURIComponent(message)}`);
-                        }}
-                        className="flex-1 bg-green-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-green-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
-                      >
-                        🔄 交換
-                      </button>
+
+                      {match.sessionId ? (
+                        // 如果已經發起交換，顯示不同的按鈕
+                        <button
+                          onClick={() => {
+                            const message = `您好！我們之前已經配對成功「${match.gameTitle}」這款遊戲，想確認一下交換進度。`;
+                            window.open(
+                              `mailto:${
+                                match.playerEmail
+                              }?subject=遊戲交換進度確認：${
+                                match.gameTitle
+                              }&body=${encodeURIComponent(message)}`
+                            );
+                          }}
+                          className="flex-1 bg-yellow-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-yellow-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                        >
+                          📞 追蹤
+                        </button>
+                      ) : (
+                        // 新配對結果，可以發起交換
+                        <button
+                          onClick={async () => {
+                            // 創建配對成功記錄（只記錄在想要用戶下）
+                            await createMatchRecord(match);
+
+                            // 打開 email 聯繫對方
+                            const message = `您好！我想要交換「${match.gameTitle}」這款遊戲，請問您有興趣嗎？我們可以討論交換的細節。`;
+                            window.open(
+                              `mailto:${
+                                match.playerEmail
+                              }?subject=遊戲交換提議：${
+                                match.gameTitle
+                              }&body=${encodeURIComponent(message)}`
+                            );
+                          }}
+                          className="flex-1 bg-green-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-green-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                        >
+                          🔄 交換
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -394,7 +550,8 @@ export default function HallPage() {
               <p className="font-bold text-gray-500">
                 {!matchingStatus
                   ? "我們會幫你尋找想要交換的遊戲夥伴"
-                  : matchingStatus.rateLimited && matchingStatus.matchesRemaining < 3
+                  : matchingStatus.rateLimited &&
+                    matchingStatus.matchesRemaining < 3
                   ? `${formatCountdown(countdown)} 後可再次配對`
                   : matchingStatus.matchesRemaining > 0
                   ? "可以再次刷新尋找更多配對"
@@ -404,74 +561,153 @@ export default function HallPage() {
               </p>
             </div>
           )}
-          
-          {/* 最近配對記錄（60分鐘內） */}
-          {matchingStatus?.recentMatches && matchingStatus.recentMatches.length > 0 && (
-            <div className="mt-8 bg-yellow-100 border-4 border-yellow-500 p-4 sm:p-6 transform -rotate-1">
-              <h3 className="text-xl font-black mb-4 text-yellow-800 text-center">
-                📋 配對歷史記錄 (60分鐘內)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {matchingStatus.recentMatches.slice(0, 9).map((match, index) => (
-                  <div 
-                    key={`recent-${match.playerId}-${match.gameId}-${index}`} 
-                    className="bg-white border-4 border-yellow-600 p-4 shadow-[4px_4px_0px_#000000] transform hover:scale-105 transition-transform"
-                  >
-                    {/* 遊戲標題 */}
-                    <h4 className="font-black text-base mb-2 line-clamp-2">
-                      {match.gameTitle}
-                    </h4>
 
-                    {/* 配對狀態標籤 */}
-                    <div className={`inline-block px-2 py-1 border-2 border-black font-bold text-xs mb-2 ${
-                      match.matchType === 'seeking' 
-                        ? 'bg-green-400 text-green-900' 
-                        : 'bg-blue-400 text-blue-900'
-                    }`}>
-                      {match.matchType === 'seeking' ? '🔍 想要的遊戲' : '🎁 持有的遊戲'}
-                    </div>
-
-                    {/* 玩家資訊 */}
-                    <div className="mb-3">
-                      <p className="font-bold text-xs text-gray-600 mb-1">
-                        👤 {match.playerName}
-                      </p>
-                      <p className="text-xs font-medium text-gray-500">
-                        📧 {match.playerEmail}
-                      </p>
-                    </div>
-
-                    {/* 操作按鈕 */}
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => window.open(`mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我對您的「${match.gameTitle}」遊戲有興趣，想討論交換的可能性。`)}
-                        className="flex-1 bg-blue-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-blue-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+          {/* 配對歷史記錄（60分鐘內） */}
+          {matchingStatus?.recentMatches &&
+            matchingStatus.recentMatches.length > 0 && (
+              <div className="mt-8 bg-yellow-100 border-4 border-yellow-500 p-4 sm:p-6 transform -rotate-1">
+                <h3 className="text-xl font-black mb-4 text-yellow-800 text-center">
+                  📋 配對歷史紀錄 (60分鐘內)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {matchingStatus.recentMatches
+                    .slice(0, 9)
+                    .map((match, index) => (
+                      <div
+                        key={`recent-${match.playerId}-${match.gameId}-${index}`}
+                        className={`p-4 shadow-[4px_4px_0px_#000000] transform hover:scale-105 transition-transform ${
+                          match.sessionId
+                            ? "bg-green-50 border-4 border-green-500" // 配對成功記錄
+                            : match.isHistoryRecord
+                            ? "bg-orange-50 border-4 border-orange-500" // 配對歷史記錄
+                            : "bg-white border-4 border-yellow-600" // 普通配對記錄
+                        }`}
                       >
-                        📧 聯繫
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const message = `您好！我想要交換「${match.gameTitle}」這款遊戲，請問您有興趣嗎？我們可以討論交換的細節。`;
-                          window.open(`mailto:${match.playerEmail}?subject=遊戲交換提議：${match.gameTitle}&body=${encodeURIComponent(message)}`);
-                        }}
-                        className="flex-1 bg-green-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-green-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
-                      >
-                        🔄 交換
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                        {/* 記錄類型標識 */}
+                        {match.sessionId && (
+                          <div className="inline-block px-2 py-1 bg-green-500 text-white border-2 border-black font-bold text-xs mb-2 transform -rotate-1">
+                            ✅ 已發起交換
+                          </div>
+                        )}
+                        {match.isHistoryRecord && !match.sessionId && (
+                          <div className="inline-block px-2 py-1 bg-orange-500 text-white border-2 border-black font-bold text-xs mb-2 transform -rotate-1">
+                            📋 配對歷史
+                          </div>
+                        )}
+
+                        {/* 遊戲標題 */}
+                        <h4 className="font-black text-base mb-2 line-clamp-2">
+                          {match.gameTitle}
+                        </h4>
+
+                        {/* 配對狀態標籤 */}
+                        <div
+                          className={`inline-block px-2 py-1 border-2 border-black font-bold text-xs mb-2 ${
+                            match.matchType === "seeking"
+                              ? "bg-green-400 text-green-900"
+                              : "bg-blue-400 text-blue-900"
+                          }`}
+                        >
+                          {match.matchType === "seeking"
+                            ? "🔍 想要的遊戲"
+                            : "🎁 持有的遊戲"}
+                        </div>
+
+                        {/* 玩家資訊 */}
+                        <div className="mb-3">
+                          <p className="font-bold text-xs text-gray-600 mb-1">
+                            👤 {match.playerName}
+                          </p>
+                          <p className="text-xs font-medium text-gray-500">
+                            📧 {match.playerEmail}
+                          </p>
+                        </div>
+
+                        {/* 操作按鈕 */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              window.open(
+                                `mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我對您的「${match.gameTitle}」遊戲有興趣，想討論交換的可能性。`
+                              )
+                            }
+                            className="flex-1 bg-blue-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-blue-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                          >
+                            📧 聯繫
+                          </button>
+
+                          {match.sessionId ? (
+                            // 配對成功記錄 - 追蹤按鈕
+                            <button
+                              onClick={() => {
+                                const message = `您好！我們之前已經配對成功「${match.gameTitle}」這款遊戲，想確認一下交換進度。`;
+                                window.open(
+                                  `mailto:${
+                                    match.playerEmail
+                                  }?subject=遊戲交換進度確認：${
+                                    match.gameTitle
+                                  }&body=${encodeURIComponent(message)}`
+                                );
+                              }}
+                              className="flex-1 bg-yellow-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-yellow-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                            >
+                              📞 追蹤
+                            </button>
+                          ) : match.isHistoryRecord ? (
+                            // 配對歷史記錄 - 重新交換按鈕
+                            <button
+                              onClick={async () => {
+                                // 創建配對成功記錄
+                                await createMatchRecord(match);
+
+                                const message = `您好！我們之前曾經配對過「${match.gameTitle}」這款遊戲，想重新討論交換的可能性。`;
+                                window.open(
+                                  `mailto:${
+                                    match.playerEmail
+                                  }?subject=重新交換提議：${
+                                    match.gameTitle
+                                  }&body=${encodeURIComponent(message)}`
+                                );
+                              }}
+                              className="flex-1 bg-orange-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-orange-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                            >
+                              🔄 重新交換
+                            </button>
+                          ) : (
+                            // 新配對結果 - 交換按鈕
+                            <button
+                              onClick={async () => {
+                                await createMatchRecord(match);
+
+                                const message = `您好！我想要交換「${match.gameTitle}」這款遊戲，請問您有興趣嗎？我們可以討論交換的細節。`;
+                                window.open(
+                                  `mailto:${
+                                    match.playerEmail
+                                  }?subject=遊戲交換提議：${
+                                    match.gameTitle
+                                  }&body=${encodeURIComponent(message)}`
+                                );
+                              }}
+                              className="flex-1 bg-green-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-green-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                            >
+                              🔄 交換
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {/* 記錄統計 */}
+                <div className="mt-4 text-center">
+                  <p className="font-bold text-yellow-700 text-sm">
+                    📊 共找到 {matchingStatus.recentMatches.length} 筆配對記錄
+                    {matchingStatus.recentMatches.length > 9 &&
+                      " (顯示最新 9 筆)"}
+                  </p>
+                </div>
               </div>
-              
-              {/* 記錄統計 */}
-              <div className="mt-4 text-center">
-                <p className="font-bold text-yellow-700 text-sm">
-                  📊 共找到 {matchingStatus.recentMatches.length} 筆配對記錄
-                  {matchingStatus.recentMatches.length > 9 && ' (顯示最新 9 筆)'}
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
           {/* 說明區域 */}
           <div className="mt-8 bg-gray-100 border-4 border-gray-400 p-4 transform rotate-1">
@@ -486,6 +722,40 @@ export default function HallPage() {
           </div>
         </div>
       </div>
+
+      {/* 沒有想要交換遊戲的提醒Modal */}
+      {showNoWantGameModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_#000000] transform -rotate-1 max-w-md w-full">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🎮</div>
+              <h2 className="text-xl font-black text-gray-800 mb-4">
+                找不到可配對的遊戲
+              </h2>
+              <p className="font-bold text-gray-600 mb-6 leading-relaxed">
+                您尚未有「想要交換」標籤的遊戲，
+                <br />
+                請至我的卡片新增想要交換的遊戲。
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Link
+                  href="/collection"
+                  className="bg-blue-500 text-white border-2 border-black px-6 py-2 font-black hover:bg-blue-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
+                  onClick={() => setShowNoWantGameModal(false)}
+                >
+                  🃏 前往我的卡片
+                </Link>
+                <button
+                  onClick={() => setShowNoWantGameModal(false)}
+                  className="bg-gray-500 text-white border-2 border-black px-6 py-2 font-black hover:bg-gray-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
+                >
+                  關閉
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

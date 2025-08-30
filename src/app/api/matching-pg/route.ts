@@ -41,11 +41,16 @@ export async function GET(request: NextRequest) {
     // 如果是狀態檢查，直接返回狀態而不進行新配對
     if (statusOnly) {
       console.log('📊 回傳配對狀態（不進行新配對）:', {
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
         matchesUsed: matchPermission.matchesUsed,
         secondsUntilReset: matchPermission.secondsUntilReset,
         canMatch: matchPermission.canMatch,
         hasRecentMatches: !!matchPermission.recentMatches,
-        lastMatchAt: matchPermission.lastMatchAt
+        recentMatchesCount: matchPermission.recentMatches ? matchPermission.recentMatches.length : 0,
+        lastMatchAt: matchPermission.lastMatchAt,
+        sessionExpired: matchPermission.sessionExpired
       })
       
       // 檢查並處理歷史記錄的時效性
@@ -54,42 +59,37 @@ export async function GET(request: NextRequest) {
       let historyExpireTime: Date | null = null
       let historyRemainingMinutes = 0
       
-      if (matchPermission.recentMatches && Array.isArray(matchPermission.recentMatches) && matchPermission.lastMatchAt) {
+      // 信任 PostgreSQL 的時間檢查邏輯，直接使用 hasRecentMatches
+      if (matchPermission.recentMatches && Array.isArray(matchPermission.recentMatches) && matchPermission.hasRecentMatches) {
         const lastMatchTime = new Date(matchPermission.lastMatchAt)
         const now = new Date()
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000) // 1小時前
         
-        // 檢查歷史記錄是否在1小時內
-        if (lastMatchTime > oneHourAgo) {
-          isHistoryValid = true
-          displayMatches = matchPermission.recentMatches
-          historyExpireTime = new Date(lastMatchTime.getTime() + 60 * 60 * 1000) // 配對時間 + 1小時
-          historyRemainingMinutes = Math.max(0, Math.ceil((historyExpireTime.getTime() - now.getTime()) / (60 * 1000)))
-          
-          console.log('✅ 歷史記錄有效:', {
-            lastMatchTime: lastMatchTime.toISOString(),
-            expireTime: historyExpireTime.toISOString(),
-            remainingMinutes: historyRemainingMinutes,
-            matchCount: displayMatches.length
-          })
-        } else {
-          console.log('⏰ 歷史記錄已過期，需要清除:', {
-            lastMatchTime: lastMatchTime.toISOString(),
-            oneHourAgo: oneHourAgo.toISOString()
-          })
-          
-          // 清除過期的歷史記錄
-          try {
-            await sql`
-              UPDATE user_matching_sessions 
-              SET last_match_games = NULL, last_match_at = NULL
-              WHERE user_id = ${user.id} AND last_match_at < NOW() - INTERVAL '60 minutes'
-            `
-            console.log('🧹 已清除過期的歷史記錄')
-          } catch (cleanError) {
-            console.error('❌ 清除過期記錄失敗:', cleanError)
-          }
-        }
+        console.log('⏰ 使用資料庫時間檢查結果:', {
+          lastMatchTime: lastMatchTime.toISOString(),
+          currentTime: now.toISOString(),
+          hasRecentMatches: matchPermission.hasRecentMatches,
+          recentMatchesLength: matchPermission.recentMatches.length,
+          userId: user.id
+        })
+        
+        isHistoryValid = true
+        displayMatches = matchPermission.recentMatches
+        historyExpireTime = new Date(lastMatchTime.getTime() + 1 * 60 * 1000) // 配對時間 + 1分鐘
+        historyRemainingMinutes = Math.max(0, Math.ceil((historyExpireTime.getTime() - now.getTime()) / (60 * 1000)))
+        
+        console.log('✅ 歷史記錄有效（基於資料庫檢查）:', {
+          lastMatchTime: lastMatchTime.toISOString(),
+          expireTime: historyExpireTime.toISOString(),
+          remainingMinutes: historyRemainingMinutes,
+          matchCount: displayMatches.length
+        })
+      } else {
+        console.log('⏰ 無有效的歷史記錄:', {
+          hasRecentMatches: !!matchPermission.recentMatches,
+          hasRecentMatchesFlag: matchPermission.hasRecentMatches,
+          lastMatchAt: matchPermission.lastMatchAt,
+          userId: user.id
+        })
       }
       
       console.log('🔍 狀態檢查邏輯:', {

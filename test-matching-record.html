@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配對記錄測試</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .result { 
+            background: #f5f5f5; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>配對記錄測試</h1>
+        
+        <div>
+            <button onclick="testRecordMatching()">測試手動記錄配對結果</button>
+            <button onclick="checkMatchingSession()">檢查配對會話資料</button>
+            <button onclick="clearResults()">清除結果</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function showResult(title, data, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<h3>${title}</h3>${JSON.stringify(data, null, 2)}`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 測試手動記錄配對結果
+        async function testRecordMatching() {
+            try {
+                // 模擬一個配對結果
+                const testMatchData = [{
+                    gameId: 28,
+                    gameTitle: "薩爾達傳說 曠野之息",
+                    playerId: 38,
+                    playerName: "熱帶嶼",
+                    playerEmail: "r0931668461@gmail.com",
+                    matchType: "seeking"
+                }];
+
+                const response = await fetch('/api/debug/test-record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: 8, // 假設測試用戶 ID
+                        matchResults: testMatchData
+                    })
+                });
+
+                const data = await response.json();
+                showResult('測試記錄配對結果', data);
+            } catch (error) {
+                showResult('錯誤', { error: error.message }, true);
+            }
+        }
+
+        // 檢查配對會話資料
+        async function checkMatchingSession() {
+            try {
+                const response = await fetch('/api/debug/query-db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: `
+                            SELECT 
+                                id, 
+                                user_id, 
+                                matches_used, 
+                                last_match_at,
+                                last_match_games,
+                                CASE 
+                                    WHEN last_match_games IS NOT NULL THEN true
+                                    ELSE false
+                                END as has_json_data,
+                                CASE 
+                                    WHEN last_match_games IS NOT NULL THEN jsonb_array_length(last_match_games::jsonb)
+                                    ELSE 0
+                                END as json_array_length
+                            FROM user_matching_sessions 
+                            WHERE user_id = 8
+                        `
+                    })
+                });
+
+                const data = await response.json();
+                showResult('配對會話資料', data);
+            } catch (error) {
+                showResult('錯誤', { error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>

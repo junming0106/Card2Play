@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         -- 檢查最後配對記錄是否在60分鐘內
         CASE 
           WHEN last_match_at IS NULL THEN false
-          WHEN last_match_at > NOW() - INTERVAL '60 minutes' THEN true
+          WHEN last_match_at > NOW() - INTERVAL '1 minute' THEN true
           ELSE false 
         END as has_recent_matches,
         -- 顯示時間差
