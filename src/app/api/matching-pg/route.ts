@@ -53,13 +53,13 @@ export async function GET(request: NextRequest) {
         sessionExpired: matchPermission.sessionExpired
       })
       
-      // 檢查並處理歷史記錄的時效性
+      // 使用新的資料結構處理當前配對結果和歷史記錄
       let displayMatches: MatchResult[] = []
       let isHistoryValid = false
       let historyExpireTime: Date | null = null
       let historyRemainingMinutes = 0
       
-      // 信任 PostgreSQL 的時間檢查邏輯，直接使用 hasRecentMatches
+      // 優先顯示當前配對結果，沒有則顯示歷史記錄
       if (matchPermission.recentMatches && Array.isArray(matchPermission.recentMatches) && matchPermission.hasRecentMatches) {
         const lastMatchTime = new Date(matchPermission.lastMatchAt)
         const now = new Date()
@@ -77,14 +77,15 @@ export async function GET(request: NextRequest) {
         historyExpireTime = new Date(lastMatchTime.getTime() + 1 * 60 * 1000) // 配對時間 + 1分鐘
         historyRemainingMinutes = Math.max(0, Math.ceil((historyExpireTime.getTime() - now.getTime()) / (60 * 1000)))
         
-        console.log('✅ 歷史記錄有效（基於資料庫檢查）:', {
+        console.log('✅ 顯示配對結果（當前或歷史）:', {
           lastMatchTime: lastMatchTime.toISOString(),
           expireTime: historyExpireTime.toISOString(),
           remainingMinutes: historyRemainingMinutes,
-          matchCount: displayMatches.length
+          matchCount: displayMatches.length,
+          isHistorical: displayMatches.some(m => m.isHistoryRecord)
         })
       } else {
-        console.log('⏰ 無有效的歷史記錄:', {
+        console.log('⏰ 無有效的配對記錄:', {
           hasRecentMatches: !!matchPermission.recentMatches,
           hasRecentMatchesFlag: matchPermission.hasRecentMatches,
           lastMatchAt: matchPermission.lastMatchAt,
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
         matchesRemaining: matchPermission.matchesRemaining,
         secondsUntilReset: matchPermission.secondsUntilReset,
         nextResetTime: new Date(Date.now() + (matchPermission.secondsUntilReset * 1000)).toISOString(),
-        recentMatches: isHistoryValid ? matchPermission.recentMatches : null, // 只返回有效的歷史記錄
+        recentMatches: matchPermission.allRecentMatches || null, // 使用新的累積歷史記錄
         summary: summary,
         // 新增歷史記錄相關信息
         historyInfo: isHistoryValid ? {
@@ -168,7 +169,7 @@ export async function GET(request: NextRequest) {
         matchesRemaining: matchPermission.matchesRemaining,
         secondsUntilReset: matchPermission.secondsUntilReset,
         nextResetTime: new Date(Date.now() + (matchPermission.secondsUntilReset * 1000)).toISOString(),
-        recentMatches: matchPermission.recentMatches,
+        recentMatches: matchPermission.allRecentMatches || null,
         summary: summary,
         user: {
           id: user.id,

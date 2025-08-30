@@ -742,7 +742,12 @@ export async function getUserMatchingSession(userId: number) {
         CASE 
           WHEN last_match_games IS NOT NULL THEN true
           ELSE false 
-        END as has_json_data
+        END as has_json_data,
+        -- 檢查歷史記錄是否存在
+        CASE 
+          WHEN match_history IS NOT NULL THEN true
+          ELSE false 
+        END as has_history_data
       FROM user_matching_sessions 
       WHERE user_id = ${userId}
     `;
@@ -839,12 +844,70 @@ export async function recordMatchingAttempt(userId: number, matchResults: any[] 
     
     console.log('🔧 準備保存的配對資料:', JSON.stringify(matchSummary, null, 2))
     
+    // 簡化分離邏輯：
+    // 1. last_match_games: 儲存當前配對的結果
+    // 2. match_history: 獨立累積配對歷史記錄（新內容直接疊加）
+    
+    let newMatchHistory = [];
+    
+    if (matchSummary.length > 0) {
+      // 獲取現有的歷史記錄
+      const existingResult = await sql`
+        SELECT match_history
+        FROM user_matching_sessions 
+        WHERE user_id = ${userId}
+      `;
+      
+      if (existingResult.rows.length > 0) {
+        const existing = existingResult.rows[0];
+        
+        // 1. 先加載現有的歷史記錄
+        let allHistoryMatches = [];
+        if (existing.match_history) {
+          try {
+            let existingHistory = existing.match_history;
+            if (typeof existingHistory === 'string') {
+              existingHistory = JSON.parse(existingHistory);
+            }
+            if (Array.isArray(existingHistory)) {
+              allHistoryMatches = [...existingHistory];
+              console.log('📚 載入現有歷史記錄:', allHistoryMatches.length, '筆');
+            }
+          } catch (parseError) {
+            console.warn('⚠️ 解析現有歷史記錄失敗:', parseError);
+          }
+        }
+        
+        // 2. 將新的配對結果加入歷史記錄（去重檢查）
+        let addedCount = 0;
+        matchSummary.forEach(newMatch => {
+          const isDuplicate = allHistoryMatches.some(historyMatch => 
+            historyMatch.gameId === newMatch.gameId && 
+            historyMatch.playerId === newMatch.playerId &&
+            historyMatch.matchType === newMatch.matchType
+          );
+          
+          if (!isDuplicate) {
+            allHistoryMatches.push(newMatch);
+            addedCount++;
+            console.log('➕ 新配對加入歷史:', newMatch.gameTitle, newMatch.playerName);
+          } else {
+            console.log('⚠️ 新配對與歷史重複，跳過:', newMatch.gameTitle, newMatch.playerName);
+          }
+        });
+        
+        newMatchHistory = allHistoryMatches;
+        console.log('✅ 更新後歷史記錄總數:', newMatchHistory.length, '筆 (新增', addedCount, '筆)');
+      }
+    }
+    
     const result = await sql`
       UPDATE user_matching_sessions 
       SET 
         matches_used = matches_used + 1,
         last_match_at = NOW(),
-        last_match_games = ${JSON.stringify(matchSummary)}::jsonb,
+        last_match_games = ${matchSummary.length > 0 ? JSON.stringify(matchSummary) : null}::jsonb,
+        match_history = ${newMatchHistory.length > 0 ? JSON.stringify(newMatchHistory) : null}::jsonb,
         updated_at = NOW()
       WHERE user_id = ${userId}
       RETURNING 
@@ -956,11 +1019,11 @@ export async function canUserMatch(userId: number) {
     const canMatch = session.matches_used < 3
     const matchesRemaining = Math.max(0, 3 - session.matches_used)
     
-    // 獲取最近配對記錄（60分鐘內）- 來自 last_match_games（配對歷史記錄）
-    let historyMatches = null
+    // 獲取當前配對結果（來自 last_match_games）
+    let currentMatches = null
     if (session.has_recent_matches && session.last_match_games) {
       try {
-        console.log('🔍 準備解析配對歷史記錄:', {
+        console.log('🔍 準備解析當前配對結果:', {
           hasData: !!session.last_match_games,
           dataType: typeof session.last_match_games,
           dataLength: session.last_match_games ? JSON.stringify(session.last_match_games).length : 0
@@ -970,6 +1033,41 @@ export async function canUserMatch(userId: number) {
         let parsed = session.last_match_games
         if (typeof session.last_match_games === 'string') {
           parsed = JSON.parse(session.last_match_games)
+        }
+        
+        // 確保每個配對記錄都有正確的格式
+        currentMatches = Array.isArray(parsed) ? parsed.map(match => ({
+          playerId: match.playerId,
+          playerEmail: match.playerEmail || match.playerName || 'unknown@email.com',
+          playerName: match.playerName || 'Unknown Player',
+          gameTitle: match.gameTitle,
+          gameId: match.gameId,
+          matchType: match.matchType,
+          addedAt: match.matchedAt || match.addedAt || new Date().toISOString(),
+          isHistoryRecord: false // 標記為當前配對結果
+        })) : []
+        
+        console.log('✅ 成功解析當前配對結果:', currentMatches.length, '筆')
+      } catch (parseError) {
+        console.warn('⚠️ 解析當前配對結果失敗:', parseError)
+        console.log('原始資料:', session.last_match_games)
+      }
+    }
+    
+    // 獲取歷史配對記錄（來自 match_history）- 獨立於 has_recent_matches
+    let historyMatches = null
+    if (session.match_history) {
+      try {
+        console.log('🔍 準備解析配對歷史記錄:', {
+          hasData: !!session.match_history,
+          dataType: typeof session.match_history,
+          dataLength: session.match_history ? JSON.stringify(session.match_history).length : 0
+        })
+        
+        // PostgreSQL 的 JSONB 欄位可能直接回傳物件或字串
+        let parsed = session.match_history
+        if (typeof session.match_history === 'string') {
+          parsed = JSON.parse(session.match_history)
         }
         
         // 確保每個配對記錄都有正確的格式
@@ -987,40 +1085,46 @@ export async function canUserMatch(userId: number) {
         console.log('✅ 成功解析配對歷史記錄:', historyMatches.length, '筆')
       } catch (parseError) {
         console.warn('⚠️ 解析配對歷史記錄失敗:', parseError)
-        console.log('原始資料:', session.last_match_games)
-        // 如果解析失敗，嘗試清理無效的數據
-        try {
-          await sql`
-            UPDATE user_matching_sessions 
-            SET last_match_games = NULL 
-            WHERE user_id = ${userId} AND last_match_games IS NOT NULL
-          `
-          console.log('🧹 清理了無效的配對歷史數據')
-        } catch (cleanError) {
-          console.error('清理無效數據失敗:', cleanError)
-        }
+        console.log('原始資料:', session.match_history)
       }
     }
     
     // 獲取配對成功記錄
     const matchSessionRecords = await getRecentMatchSessions(userId)
     
-    // 合併兩種記錄：配對歷史記錄 + 配對成功記錄
-    let allRecentMatches = null
-    if (historyMatches && historyMatches.length > 0) {
-      allRecentMatches = [...historyMatches]
+    // 決定要顯示的配對記錄：優先顯示當前配對結果，沒有則顯示歷史記錄
+    let displayMatches = null
+    
+    // 1. 如果有當前配對結果，優先顯示
+    if (currentMatches && currentMatches.length > 0) {
+      displayMatches = currentMatches
+      console.log('📋 使用當前配對結果:', currentMatches.length, '筆')
+    }
+    // 2. 如果沒有當前配對但有歷史記錄，顯示歷史記錄
+    else if (historyMatches && historyMatches.length > 0) {
+      displayMatches = historyMatches  
+      console.log('📚 使用歷史配對記錄:', historyMatches.length, '筆')
     }
     
-    if (matchSessionRecords && matchSessionRecords.length > 0) {
-      if (allRecentMatches) {
-        // 合併記錄，避免重複
-        const existingGameIds = new Set(allRecentMatches.map(m => `${m.gameId}-${m.playerId}`))
-        const newRecords = matchSessionRecords.filter(m => !existingGameIds.has(`${m.gameId}-${m.playerId}`))
-        allRecentMatches = [...allRecentMatches, ...newRecords]
-      } else {
-        allRecentMatches = matchSessionRecords
-      }
+    // 3. 構建完整的歷史記錄列表（合併所有類型的記錄）
+    let allRecentMatches = []
+    
+    // 首先加入 match_history 中的歷史配對記錄
+    if (historyMatches && historyMatches.length > 0) {
+      allRecentMatches = [...historyMatches]
+      console.log('📚 加入 match_history 資料:', historyMatches.length, '筆')
     }
+    
+    // 然後加入配對成功記錄，但避免重複
+    if (matchSessionRecords && matchSessionRecords.length > 0) {
+      const existingGameIds = new Set(allRecentMatches.map(m => `${m.gameId}-${m.playerId}`))
+      const newSessionRecords = matchSessionRecords.filter(m => !existingGameIds.has(`${m.gameId}-${m.playerId}`))
+      allRecentMatches = [...allRecentMatches, ...newSessionRecords]
+      console.log('🎯 加入配對成功記錄:', newSessionRecords.length, '筆')
+    }
+    
+    // 確保 allRecentMatches 不為空時才設定為陣列，否則設為 null
+    allRecentMatches = allRecentMatches.length > 0 ? allRecentMatches : null
     
     console.log('📊 配對權限檢查結果:', {
       canMatch,
@@ -1028,7 +1132,9 @@ export async function canUserMatch(userId: number) {
       matchesRemaining,
       secondsUntilReset: session.seconds_until_reset,
       hasRecentMatches: session.has_recent_matches,
+      currentMatches: currentMatches ? currentMatches.length : 0,
       historyMatches: historyMatches ? historyMatches.length : 0,
+      displayMatches: displayMatches ? displayMatches.length : 0,
       matchSessionRecords: matchSessionRecords.length,
       totalRecentMatches: allRecentMatches ? allRecentMatches.length : 0,
       lastMatchAt: session.last_match_at
@@ -1040,7 +1146,8 @@ export async function canUserMatch(userId: number) {
       matchesRemaining,
       secondsUntilReset: session.seconds_until_reset,
       sessionExpired: session.session_expired,
-      recentMatches: allRecentMatches,
+      recentMatches: displayMatches, // 主要顯示的配對結果（當前或歷史）
+      allRecentMatches: allRecentMatches, // 所有歷史記錄（用於歷史區塊顯示）
       lastMatchAt: session.last_match_at, // 確保返回最後配對時間
       hasRecentMatches: session.has_recent_matches || (matchSessionRecords.length > 0)
     }
