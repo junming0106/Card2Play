@@ -116,6 +116,40 @@ export default function HallPage() {
     }
   };
 
+  // 專門獲取歷史紀錄資料
+  const fetchMatchingStatusForHistory = async () => {
+    if (!user) return;
+
+    try {
+      const idToken = await user.getIdToken();
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      };
+
+      const response = await fetch("/api/matching-pg?status_only=true", {
+        method: "GET",
+        headers: headers,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ 獲取歷史紀錄狀態:", result);
+
+        // 只更新 recentMatches 和 historyInfo，保持其他狀態不變
+        setMatchingStatus((prevStatus) => ({
+          ...prevStatus!,
+          recentMatches: result.data?.recentMatches || null,
+          historyInfo: result.data?.historyInfo || null,
+        }));
+      } else {
+        console.log("❌ 獲取歷史紀錄失敗");
+      }
+    } catch (error) {
+      console.error("💥 獲取歷史紀錄錯誤:", error);
+    }
+  };
+
   // 獲取配對狀態（不進行新配對）
   const fetchMatchingStatus = async () => {
     if (!user) {
@@ -264,6 +298,9 @@ export default function HallPage() {
         } else {
           setCountdown(0); // 重置倒數計時器
         }
+
+        // 配對完成後，額外調用 status_only API 來獲取完整的歷史紀錄資料
+        await fetchMatchingStatusForHistory();
       } else {
         const result = await response.json();
         console.log("❌ 配對失敗:", result);
@@ -303,6 +340,10 @@ export default function HallPage() {
       if (response.ok) {
         const result = await response.json();
         console.log("✅ 配對記錄創建成功:", result);
+        
+        // 創建配對記錄後，重新獲取配對狀態以顯示所有歷史記錄
+        await fetchMatchingStatus();
+        
         return result.data.matchSession;
       } else {
         const result = await response.json();
@@ -415,15 +456,7 @@ export default function HallPage() {
           {matchingStatus && matchingStatus.matches.length > 0 ? (
             <div className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] transform rotate-1">
               <h2 className="text-xl sm:text-2xl font-black mb-4 text-center">
-                {matchingStatus.historyInfo?.isHistorical ? (
-                  <>
-                    📋 歷史配對記錄 ({matchingStatus.matches.length} 個)
-                    <div className="text-sm font-bold text-orange-600 mt-2">
-                      ⏰ 剩餘 {matchingStatus.historyInfo.remainingMinutes}{" "}
-                      分鐘有效
-                    </div>
-                  </>
-                ) : matchingStatus.rateLimited ? (
+                {matchingStatus.rateLimited ? (
                   "🎮 之前配對結果"
                 ) : (
                   `🎮 找到 ${matchingStatus.matches.length} 個配對！`
