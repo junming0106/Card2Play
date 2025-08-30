@@ -923,7 +923,8 @@ export async function canUserMatch(userId: number) {
       secondsUntilReset: session.seconds_until_reset,
       sessionExpired: session.session_expired,
       recentMatches,
-      lastMatchAt: session.last_match_at
+      lastMatchAt: session.last_match_at, // 確保返回最後配對時間
+      hasRecentMatches: session.has_recent_matches
     }
   } catch (error) {
     console.error('❌ 檢查用戶配對權限失敗:', error)

@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       } catch (importError) {
         matchingTestResult = {
           error: '配對函數導入失敗',
-          details: importError.message
+          details: importError instanceof Error ? importError.message : 'Unknown import error'
         }
         console.log('❌ 配對查詢測試失敗:', matchingTestResult)
       }
@@ -116,11 +116,11 @@ export async function GET(request: NextRequest) {
     return new Response(JSON.stringify({
       success: false,
       timestamp: new Date().toISOString(),
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
       details: {
-        name: error.name,
-        code: error.code
+        name: error instanceof Error ? error.name : 'UnknownError',
+        code: (error as any)?.code
       }
     }), {
       status: 500,

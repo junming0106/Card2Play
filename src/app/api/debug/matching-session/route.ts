@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       try {
         parsedGames = JSON.parse(session.last_match_games)
       } catch (error) {
-        parseError = error.message
+        parseError = error instanceof Error ? error.message : 'Unknown parse error'
       }
     }
 
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     return new Response(JSON.stringify({ 
       success: false, 
       error: '調試失敗',
-      details: error.message
+      details: error instanceof Error ? error.message : 'Unknown error'
     }), { 
       status: 500, 
       headers: { 'Content-Type': 'application/json' } 

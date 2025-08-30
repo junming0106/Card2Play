@@ -23,6 +23,12 @@ interface MatchingStatus {
   secondsUntilReset: number;
   nextResetTime: string;
   recentMatches: MatchResult[] | null;
+  historyInfo?: {
+    isHistorical: boolean;
+    lastMatchAt: string;
+    expireTime: string;
+    remainingMinutes: number;
+  } | null;
 }
 
 export default function HallPage() {
@@ -38,6 +44,7 @@ export default function HallPage() {
       console.log('🚀 頁面載入，自動獲取配對狀態...');
       fetchMatchingStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // 倒數計時器 - 每秒更新
@@ -101,10 +108,20 @@ export default function HallPage() {
           matchesRemaining: result.data?.matchesRemaining || 0,
           secondsUntilReset: result.data?.secondsUntilReset || 0,
           nextResetTime: result.data?.nextResetTime || '',
-          recentMatches: result.data?.recentMatches || null
+          recentMatches: result.data?.recentMatches || null,
+          historyInfo: result.data?.historyInfo || null
         };
         
         setMatchingStatus(status);
+        
+        // 記錄歷史記錄信息
+        if (status.historyInfo?.isHistorical) {
+          console.log('📋 載入歷史記錄:', {
+            matchCount: status.matches.length,
+            lastMatchAt: status.historyInfo.lastMatchAt,
+            remainingMinutes: status.historyInfo.remainingMinutes
+          });
+        }
         
         // 設定倒數計時器 - 只有配對餘額不滿3時才開始倒數
         if (status.secondsUntilReset > 0 && status.matchesRemaining < 3) {
@@ -175,7 +192,8 @@ export default function HallPage() {
           matchesRemaining: result.data?.matchesRemaining || 0,
           secondsUntilReset: result.data?.secondsUntilReset || 0,
           nextResetTime: result.data?.nextResetTime || '',
-          recentMatches: result.data?.recentMatches || null
+          recentMatches: result.data?.recentMatches || null,
+          historyInfo: result.data?.historyInfo || null
         };
         
         setMatchingStatus(status);
@@ -276,11 +294,34 @@ export default function HallPage() {
             </div>
           )}
 
+          {/* 歷史記錄即將過期提示 */}
+          {matchingStatus?.historyInfo?.isHistorical && 
+           matchingStatus.historyInfo.remainingMinutes <= 10 && 
+           matchingStatus.historyInfo.remainingMinutes > 0 && (
+            <div className="mb-6 bg-yellow-100 border-4 border-yellow-500 p-4 text-center transform -rotate-1">
+              <h3 className="text-lg font-black text-yellow-800 mb-2">⚠️ 歷史記錄即將過期</h3>
+              <p className="font-bold text-yellow-700">
+                配對記錄將在 {matchingStatus.historyInfo.remainingMinutes} 分鐘後清除
+              </p>
+            </div>
+          )}
+
           {/* 配對結果 */}
           {matchingStatus && matchingStatus.matches.length > 0 ? (
             <div className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] transform rotate-1">
               <h2 className="text-xl sm:text-2xl font-black mb-4 text-center">
-                🎮 {matchingStatus.rateLimited ? '之前配對結果' : `找到 ${matchingStatus.matches.length} 個配對！`}
+                {matchingStatus.historyInfo?.isHistorical ? (
+                  <>
+                    📋 歷史配對記錄 ({matchingStatus.matches.length} 個)
+                    <div className="text-sm font-bold text-orange-600 mt-2">
+                      ⏰ 剩餘 {matchingStatus.historyInfo.remainingMinutes} 分鐘有效
+                    </div>
+                  </>
+                ) : matchingStatus.rateLimited ? (
+                  '🎮 之前配對結果'
+                ) : (
+                  `🎮 找到 ${matchingStatus.matches.length} 個配對！`
+                )}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {matchingStatus.matches.map((match, index) => (

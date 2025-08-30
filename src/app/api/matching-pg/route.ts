@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { findGameMatches, findReversematches, canUserMatch, recordMatchingAttempt } from '@/lib/database'
+import { findGameMatches, findReversematches, canUserMatch, recordMatchingAttempt, sql } from '@/lib/database'
 import { verifyAuthTokenAndGetUser, createSuccessResponse, createErrorResponse } from '@/lib/utils/api'
 
 interface MatchResult {
@@ -44,18 +44,58 @@ export async function GET(request: NextRequest) {
         matchesUsed: matchPermission.matchesUsed,
         secondsUntilReset: matchPermission.secondsUntilReset,
         canMatch: matchPermission.canMatch,
-        hasRecentMatches: !!matchPermission.recentMatches
+        hasRecentMatches: !!matchPermission.recentMatches,
+        lastMatchAt: matchPermission.lastMatchAt
       })
       
-      // 顯示之前的配對結果（如果有的話）
-      const displayMatches = matchPermission.recentMatches && Array.isArray(matchPermission.recentMatches)
-        ? matchPermission.recentMatches 
-        : []
+      // 檢查並處理歷史記錄的時效性
+      let displayMatches: MatchResult[] = []
+      let isHistoryValid = false
+      let historyExpireTime: Date | null = null
+      let historyRemainingMinutes = 0
+      
+      if (matchPermission.recentMatches && Array.isArray(matchPermission.recentMatches) && matchPermission.lastMatchAt) {
+        const lastMatchTime = new Date(matchPermission.lastMatchAt)
+        const now = new Date()
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000) // 1小時前
+        
+        // 檢查歷史記錄是否在1小時內
+        if (lastMatchTime > oneHourAgo) {
+          isHistoryValid = true
+          displayMatches = matchPermission.recentMatches
+          historyExpireTime = new Date(lastMatchTime.getTime() + 60 * 60 * 1000) // 配對時間 + 1小時
+          historyRemainingMinutes = Math.max(0, Math.ceil((historyExpireTime.getTime() - now.getTime()) / (60 * 1000)))
+          
+          console.log('✅ 歷史記錄有效:', {
+            lastMatchTime: lastMatchTime.toISOString(),
+            expireTime: historyExpireTime.toISOString(),
+            remainingMinutes: historyRemainingMinutes,
+            matchCount: displayMatches.length
+          })
+        } else {
+          console.log('⏰ 歷史記錄已過期，需要清除:', {
+            lastMatchTime: lastMatchTime.toISOString(),
+            oneHourAgo: oneHourAgo.toISOString()
+          })
+          
+          // 清除過期的歷史記錄
+          try {
+            await sql`
+              UPDATE user_matching_sessions 
+              SET last_match_games = NULL, last_match_at = NULL
+              WHERE user_id = ${user.id} AND last_match_at < NOW() - INTERVAL '60 minutes'
+            `
+            console.log('🧹 已清除過期的歷史記錄')
+          } catch (cleanError) {
+            console.error('❌ 清除過期記錄失敗:', cleanError)
+          }
+        }
+      }
       
       console.log('🔍 狀態檢查邏輯:', {
         hasRecentMatches: !!matchPermission.recentMatches,
-        recentMatchesType: typeof matchPermission.recentMatches,
-        recentMatchesLength: Array.isArray(matchPermission.recentMatches) ? matchPermission.recentMatches.length : 'not array',
+        isHistoryValid,
+        historyRemainingMinutes,
         displayMatchesLength: displayMatches.length
       })
       
@@ -70,52 +110,72 @@ export async function GET(request: NextRequest) {
       }
       
       return createSuccessResponse({
-        matches: [], // 狀態檢查時不在主區域顯示配對結果
+        matches: displayMatches, // 狀態檢查時顯示有效的歷史記錄
         rateLimited: !matchPermission.canMatch,
         matchesUsed: matchPermission.matchesUsed,
         matchesRemaining: matchPermission.matchesRemaining,
         secondsUntilReset: matchPermission.secondsUntilReset,
         nextResetTime: new Date(Date.now() + (matchPermission.secondsUntilReset * 1000)).toISOString(),
-        recentMatches: matchPermission.recentMatches, // 歷史記錄只在歷史區域顯示
-        summary: {
-          total: 0,
-          seeking: 0,
-          offering: 0
-        },
+        recentMatches: isHistoryValid ? matchPermission.recentMatches : null, // 只返回有效的歷史記錄
+        summary: summary,
+        // 新增歷史記錄相關信息
+        historyInfo: isHistoryValid ? {
+          isHistorical: true,
+          lastMatchAt: matchPermission.lastMatchAt,
+          expireTime: historyExpireTime?.toISOString(),
+          remainingMinutes: historyRemainingMinutes
+        } : null,
         user: {
           id: user.id,
           name: user.name,
           email: user.email
         }
-      }, `配對狀態已更新${displayMatches.length > 0 ? `，歷史記錄中有 ${displayMatches.length} 個配對結果` : ''}`)
+      }, isHistoryValid 
+        ? `顯示歷史配對結果 (${displayMatches.length} 個)，剩餘 ${historyRemainingMinutes} 分鐘有效`
+        : displayMatches.length > 0 
+          ? `配對狀態已更新，顯示 ${displayMatches.length} 個配對結果`
+          : '配對狀態已更新，沒有歷史記錄'
+      )
     }
     
     // 如果用戶已達配對上限，返回限制信息
     if (!matchPermission.canMatch) {
       console.log('❌ 用戶已達配對上限:', {
         matchesUsed: matchPermission.matchesUsed,
-        secondsUntilReset: matchPermission.secondsUntilReset
+        secondsUntilReset: matchPermission.secondsUntilReset,
+        hasRecentMatches: !!matchPermission.recentMatches
       })
       
+      // 即使配對次數用完，也顯示歷史記錄
+      const displayMatches = matchPermission.recentMatches && Array.isArray(matchPermission.recentMatches)
+        ? matchPermission.recentMatches 
+        : []
+        
+      const summary = displayMatches.length > 0 ? {
+        total: displayMatches.length,
+        seeking: displayMatches.filter(m => m.matchType === 'seeking').length,
+        offering: displayMatches.filter(m => m.matchType === 'offering').length
+      } : {
+        total: 0,
+        seeking: 0,
+        offering: 0
+      }
+      
       return createSuccessResponse({
-        matches: [],
+        matches: displayMatches, // 顯示歷史記錄
         rateLimited: true,
         matchesUsed: matchPermission.matchesUsed,
         matchesRemaining: matchPermission.matchesRemaining,
         secondsUntilReset: matchPermission.secondsUntilReset,
         nextResetTime: new Date(Date.now() + (matchPermission.secondsUntilReset * 1000)).toISOString(),
         recentMatches: matchPermission.recentMatches,
-        summary: {
-          total: 0,
-          seeking: 0,
-          offering: 0
-        },
+        summary: summary,
         user: {
           id: user.id,
           name: user.name,
           email: user.email
         }
-      }, `配對次數已用完，${Math.ceil(matchPermission.secondsUntilReset / 3600)} 小時後重置`)
+      }, `配對次數已用完，${Math.ceil(matchPermission.secondsUntilReset / 3600)} 小時後重置${displayMatches.length > 0 ? `，顯示 ${displayMatches.length} 個歷史配對結果` : ''}`)
     }
 
     console.log('✅ 配對權限檢查通過，開始配對...', {

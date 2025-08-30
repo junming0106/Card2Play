@@ -77,14 +77,18 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('💥 資料庫測試失敗:', error)
     
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorName = error instanceof Error ? error.name : 'UnknownError'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: errorMessage,
       timestamp: new Date().toISOString(),
       details: {
-        name: error.name,
-        code: error.code,
-        stack: error.stack
+        name: errorName,
+        code: (error as any)?.code,
+        stack: errorStack
       }
     }), {
       status: 500,
