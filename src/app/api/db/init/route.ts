@@ -62,7 +62,7 @@ export async function GET() {
     `
     
     const tableNames = tables.rows.map(row => row.table_name)
-    const expectedTables = ['users', 'games', 'user_games']
+    const expectedTables = ['users', 'games', 'user_games', 'user_matching_sessions']
     const missingTables = expectedTables.filter(table => !tableNames.includes(table))
     
     return new Response(

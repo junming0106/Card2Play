@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配對功能除錯</title>
+    <style>
+        body { font-family: monospace; margin: 20px; line-height: 1.6; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #e8f5e8; }
+        .error { background-color: #ffe8e8; }
+        .info { background-color: #e8f4ff; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-left: 3px solid #007acc; }
+        pre { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔧 配對功能除錯工具</h1>
+
+    <!-- 資料庫連線測試 -->
+    <div class="test-section info">
+        <h3>1. 資料庫連線測試</h3>
+        <button onclick="testDatabaseConnection()">測試資料庫</button>
+        <div id="db-result" class="log"></div>
+    </div>
+
+    <!-- Firebase 初始化測試 -->
+    <div class="test-section info">
+        <h3>2. Firebase 初始化測試</h3>
+        <button onclick="initializeFirebase()">初始化 Firebase</button>
+        <button onclick="signInTest()">測試登入</button>
+        <div id="firebase-result" class="log"></div>
+    </div>
+
+    <!-- 配對 API 測試 -->
+    <div class="test-section info">
+        <h3>3. 配對 API 測試</h3>
+        <button onclick="testMatching()">測試配對 (需要登入)</button>
+        <button onclick="testMatchingStatus()">測試狀態檢查</button>
+        <div id="matching-result" class="log"></div>
+    </div>
+
+    <!-- 當前狀態顯示 -->
+    <div class="test-section info">
+        <h3>4. 當前狀態</h3>
+        <div id="current-status" class="log">尚未檢查</div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
+
+        let app, auth, user;
+
+        // Firebase 配置 (使用 localhost 環境的配置)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBi9z-KWH0DcZ_qZVVfg1pPWGSZ7i5LR8Y",
+            authDomain: "card2play-2f3a5.firebaseapp.com",
+            projectId: "card2play-2f3a5",
+            storageBucket: "card2play-2f3a5.appspot.com",
+            messagingSenderId: "588167816001",
+            appId: "1:588167816001:web:c2e64b35f9de4a5fa0c4f1"
+        };
+
+        // 測試資料庫連線
+        window.testDatabaseConnection = async function() {
+            const resultDiv = document.getElementById('db-result');
+            resultDiv.innerHTML = '正在測試資料庫連線...';
+
+            try {
+                const response = await fetch('/api/db/init');
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `<span style="color: green;">✅ 資料庫連線成功</span><br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span style="color: red;">❌ 資料庫連線失敗</span><br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: red;">❌ 資料庫測試錯誤: ${error.message}</span>`;
+            }
+        }
+
+        // 初始化 Firebase
+        window.initializeFirebase = function() {
+            const resultDiv = document.getElementById('firebase-result');
+            
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                
+                auth.onAuthStateChanged((currentUser) => {
+                    user = currentUser;
+                    updateCurrentStatus();
+                });
+                
+                resultDiv.innerHTML = '<span style="color: green;">✅ Firebase 初始化成功</span>';
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: red;">❌ Firebase 初始化失敗: ${error.message}</span>`;
+            }
+        }
+
+        // 測試登入
+        window.signInTest = async function() {
+            const resultDiv = document.getElementById('firebase-result');
+            
+            if (!auth) {
+                resultDiv.innerHTML = '<span style="color: orange;">⚠️ 請先初始化 Firebase</span>';
+                return;
+            }
+
+            try {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                user = result.user;
+                
+                resultDiv.innerHTML = `<span style="color: green;">✅ 登入成功</span><br><pre>用戶: ${user.email}<br>UID: ${user.uid}</pre>`;
+                updateCurrentStatus();
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: red;">❌ 登入失敗: ${error.message}</span>`;
+            }
+        }
+
+        // 測試配對功能
+        window.testMatching = async function() {
+            const resultDiv = document.getElementById('matching-result');
+            
+            if (!user) {
+                resultDiv.innerHTML = '<span style="color: orange;">⚠️ 請先登入</span>';
+                return;
+            }
+
+            resultDiv.innerHTML = '正在測試配對功能...';
+
+            try {
+                const idToken = await user.getIdToken();
+                console.log('ID Token 長度:', idToken.length);
+
+                const response = await fetch('/api/matching-pg', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `<span style="color: green;">✅ 配對測試成功</span><br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span style="color: red;">❌ 配對測試失敗</span><br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: red;">❌ 配對測試錯誤: ${error.message}</span>`;
+            }
+        }
+
+        // 測試狀態檢查
+        window.testMatchingStatus = async function() {
+            const resultDiv = document.getElementById('matching-result');
+            
+            if (!user) {
+                resultDiv.innerHTML = '<span style="color: orange;">⚠️ 請先登入</span>';
+                return;
+            }
+
+            resultDiv.innerHTML = '正在檢查配對狀態...';
+
+            try {
+                const idToken = await user.getIdToken();
+
+                const response = await fetch('/api/matching-pg?status_only=true', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `<span style="color: green;">✅ 狀態檢查成功</span><br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<span style="color: red;">❌ 狀態檢查失敗</span><br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: red;">❌ 狀態檢查錯誤: ${error.message}</span>`;
+            }
+        }
+
+        // 更新當前狀態
+        function updateCurrentStatus() {
+            const statusDiv = document.getElementById('current-status');
+            
+            if (user) {
+                statusDiv.innerHTML = `
+                    <span style="color: green;">✅ 已登入</span><br>
+                    <strong>用戶:</strong> ${user.email}<br>
+                    <strong>UID:</strong> ${user.uid}<br>
+                    <strong>Email 驗證:</strong> ${user.emailVerified ? '是' : '否'}<br>
+                    <button onclick="signOut()">登出</button>
+                `;
+            } else {
+                statusDiv.innerHTML = '<span style="color: orange;">⚠️ 未登入</span>';
+            }
+        }
+
+        // 登出
+        window.signOut = async function() {
+            try {
+                await signOut(auth);
+                user = null;
+                document.getElementById('firebase-result').innerHTML += '<br><span style="color: blue;">📤 已登出</span>';
+                updateCurrentStatus();
+            } catch (error) {
+                document.getElementById('firebase-result').innerHTML += `<br><span style="color: red;">❌ 登出錯誤: ${error.message}</span>`;
+            }
+        }
+
+        // 初始狀態
+        updateCurrentStatus();
+    </script>
+</body>
+</html>

@@ -76,11 +76,29 @@ export async function initializeDatabase() {
       );
     }
 
+    // 建立 user_matching_sessions 表
+    await sql`
+      CREATE TABLE IF NOT EXISTS user_matching_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        session_start TIMESTAMP DEFAULT NOW(),
+        matches_used INTEGER DEFAULT 0,
+        last_match_at TIMESTAMP,
+        last_match_games JSON,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id)
+      )
+    `;
+    console.log("✅ user_matching_sessions 表建立完成");
+
     // 建立配對優化索引
     await sql`CREATE INDEX IF NOT EXISTS idx_user_games_status_game ON user_games(status, game_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_user_games_user_status ON user_games(user_id, status)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_games_title ON games(title)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_matching_sessions_user_id ON user_matching_sessions(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_matching_sessions_session_start ON user_matching_sessions(session_start)`;
 
     console.log("✅ 索引建立完成");
     console.log("🎉 PostgreSQL 資料庫初始化完成！");
@@ -667,5 +685,273 @@ export async function findReversematches(userId: number, limit = 3) {
   } catch (error) {
     console.error("❌ 反向配對查詢失敗:", error);
     throw error;
+  }
+}
+
+// ============ 配對會話管理函數 ============
+
+// 取得用戶配對會話狀態
+export async function getUserMatchingSession(userId: number) {
+  if (!userId) {
+    throw new Error('userId 為必填欄位')
+  }
+
+  try {
+    console.log('🔍 查詢配對會話狀態:', userId)
+    
+    const result = await sql`
+      SELECT 
+        *,
+        -- 計算 session 是否已過3小時
+        CASE 
+          WHEN session_start < NOW() - INTERVAL '3 hours' THEN true 
+          ELSE false 
+        END as session_expired,
+        -- 計算距離重置還有多少秒
+        CASE 
+          WHEN session_start < NOW() - INTERVAL '3 hours' THEN 0
+          ELSE EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - NOW()))::INTEGER
+        END as seconds_until_reset,
+        -- 檢查最後配對記錄是否在60分鐘內
+        CASE 
+          WHEN last_match_at IS NULL THEN false
+          WHEN last_match_at > NOW() - INTERVAL '60 minutes' THEN true
+          ELSE false 
+        END as has_recent_matches
+      FROM user_matching_sessions 
+      WHERE user_id = ${userId}
+    `;
+    
+    const session = result.rows[0] || null
+    
+    if (session) {
+      console.log('✅ 找到配對會話:', {
+        id: session.id,
+        matchesUsed: session.matches_used,
+        sessionExpired: session.session_expired,
+        secondsUntilReset: session.seconds_until_reset,
+        hasRecentMatches: session.has_recent_matches
+      })
+    } else {
+      console.log('⚠️ 未找到配對會話，將需要建立新的')
+    }
+    
+    return session
+  } catch (error) {
+    console.error('❌ 查詢配對會話失敗:', error)
+    throw error
+  }
+}
+
+// 建立或重置用戶配對會話
+export async function createOrResetMatchingSession(userId: number) {
+  if (!userId) {
+    throw new Error('userId 為必填欄位')
+  }
+
+  try {
+    console.log('🆕 建立或重置配對會話:', userId)
+    
+    const result = await sql`
+      INSERT INTO user_matching_sessions (user_id, session_start, matches_used, last_match_at, last_match_games)
+      VALUES (${userId}, NOW(), 0, NULL, NULL)
+      ON CONFLICT (user_id) 
+      DO UPDATE SET 
+        session_start = NOW(),
+        matches_used = 0,
+        -- 只有在歷史記錄超過60分鐘時才清除，否則保留
+        last_match_at = CASE 
+          WHEN user_matching_sessions.last_match_at IS NOT NULL 
+            AND user_matching_sessions.last_match_at > NOW() - INTERVAL '60 minutes'
+          THEN user_matching_sessions.last_match_at
+          ELSE NULL 
+        END,
+        last_match_games = CASE 
+          WHEN user_matching_sessions.last_match_at IS NOT NULL 
+            AND user_matching_sessions.last_match_at > NOW() - INTERVAL '60 minutes'
+          THEN user_matching_sessions.last_match_games
+          ELSE NULL 
+        END,
+        updated_at = NOW()
+      RETURNING *
+    `
+    
+    const session = result.rows[0]
+    console.log('✅ 配對會話建立/重置成功:', {
+      id: session.id,
+      userId: session.user_id,
+      sessionStart: session.session_start
+    })
+    
+    return session
+  } catch (error) {
+    console.error('❌ 建立/重置配對會話失敗:', error)
+    throw error
+  }
+}
+
+// 增加配對次數並記錄配對結果
+export async function recordMatchingAttempt(userId: number, matchResults: any[] = []) {
+  if (!userId) {
+    throw new Error('userId 為必填欄位')
+  }
+
+  try {
+    console.log('📝 記錄配對嘗試:', { userId, matchCount: matchResults.length })
+    
+    // 轉換配對結果為 JSON 格式，只保留必要資訊
+    const matchSummary = matchResults.map(match => ({
+      gameId: match.gameId,
+      gameTitle: match.gameTitle,
+      playerId: match.playerId,
+      playerName: match.playerName,
+      playerEmail: match.playerEmail, // 確保包含 email
+      matchType: match.matchType,
+      matchedAt: new Date().toISOString()
+    }))
+    
+    const result = await sql`
+      UPDATE user_matching_sessions 
+      SET 
+        matches_used = matches_used + 1,
+        last_match_at = NOW(),
+        last_match_games = ${JSON.stringify(matchSummary)},
+        updated_at = NOW()
+      WHERE user_id = ${userId}
+      RETURNING 
+        *,
+        -- 計算距離重置還有多少秒
+        EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - NOW()))::INTEGER as seconds_until_reset
+    `
+    
+    if (result.rows.length === 0) {
+      throw new Error('找不到配對會話，請先建立會話')
+    }
+    
+    const session = result.rows[0]
+    console.log('✅ 配對嘗試記錄成功:', {
+      matchesUsed: session.matches_used,
+      secondsUntilReset: session.seconds_until_reset,
+      matchResults: matchSummary.length
+    })
+    
+    return session
+  } catch (error) {
+    console.error('❌ 記錄配對嘗試失敗:', error)
+    throw error
+  }
+}
+
+// 檢查用戶是否可以進行配對
+export async function canUserMatch(userId: number) {
+  if (!userId) {
+    throw new Error('userId 為必填欄位')
+  }
+
+  try {
+    console.log('🔍 檢查用戶配對權限:', userId)
+    
+    let session = await getUserMatchingSession(userId)
+    
+    // 如果沒有會話或會話已過期，建立新會話
+    if (!session || session.session_expired) {
+      console.log('⏰ 會話不存在或已過期，建立新會話')
+      session = await createOrResetMatchingSession(userId)
+      
+      return {
+        canMatch: true,
+        matchesUsed: 0,
+        matchesRemaining: 3,
+        secondsUntilReset: 3 * 60 * 60, // 3小時 = 10800秒
+        sessionExpired: false,
+        recentMatches: null
+      }
+    }
+    
+    const canMatch = session.matches_used < 3
+    const matchesRemaining = Math.max(0, 3 - session.matches_used)
+    
+    // 獲取最近配對記錄（60分鐘內）
+    let recentMatches = null
+    if (session.has_recent_matches && session.last_match_games) {
+      try {
+        const parsed = JSON.parse(session.last_match_games)
+        
+        // 確保每個配對記錄都有正確的格式
+        recentMatches = Array.isArray(parsed) ? parsed.map(match => ({
+          playerId: match.playerId,
+          playerEmail: match.playerEmail || match.playerName || 'unknown@email.com',
+          playerName: match.playerName || 'Unknown Player',
+          gameTitle: match.gameTitle,
+          gameId: match.gameId,
+          matchType: match.matchType,
+          addedAt: match.matchedAt || match.addedAt || new Date().toISOString()
+        })) : []
+        
+        console.log('✅ 成功解析歷史配對記錄:', recentMatches.length, '筆')
+      } catch (parseError) {
+        console.warn('⚠️ 解析最近配對記錄失敗:', parseError)
+        // 如果解析失敗，嘗試清理無效的數據
+        try {
+          await sql`
+            UPDATE user_matching_sessions 
+            SET last_match_games = NULL 
+            WHERE user_id = ${userId} AND last_match_games IS NOT NULL
+          `
+          console.log('🧹 清理了無效的配對記錄數據')
+        } catch (cleanError) {
+          console.error('清理無效數據失敗:', cleanError)
+        }
+      }
+    }
+    
+    console.log('📊 配對權限檢查結果:', {
+      canMatch,
+      matchesUsed: session.matches_used,
+      matchesRemaining,
+      secondsUntilReset: session.seconds_until_reset,
+      hasRecentMatches: session.has_recent_matches,
+      recentMatchesCount: recentMatches ? recentMatches.length : 0,
+      lastMatchAt: session.last_match_at,
+      rawGameData: session.last_match_games ? (typeof session.last_match_games === 'string' ? session.last_match_games.substring(0, 100) + '...' : JSON.stringify(session.last_match_games).substring(0, 100) + '...') : null
+    })
+    
+    return {
+      canMatch,
+      matchesUsed: session.matches_used,
+      matchesRemaining,
+      secondsUntilReset: session.seconds_until_reset,
+      sessionExpired: session.session_expired,
+      recentMatches,
+      lastMatchAt: session.last_match_at
+    }
+  } catch (error) {
+    console.error('❌ 檢查用戶配對權限失敗:', error)
+    throw error
+  }
+}
+
+// 清理過期的配對記錄（定期維護用）
+export async function cleanExpiredMatchingSessions() {
+  try {
+    console.log('🧹 清理過期配對記錄...')
+    
+    const result = await sql`
+      UPDATE user_matching_sessions 
+      SET 
+        last_match_at = NULL,
+        last_match_games = NULL,
+        updated_at = NOW()
+      WHERE last_match_at < NOW() - INTERVAL '60 minutes'
+      RETURNING COUNT(*) as cleaned_count
+    `
+    
+    const cleanedCount = result.rows[0]?.cleaned_count || 0
+    console.log(`✅ 清理完成，清理了 ${cleanedCount} 筆過期配對記錄`)
+    
+    return { cleanedCount }
+  } catch (error) {
+    console.error('❌ 清理過期配對記錄失敗:', error)
+    throw error
   }
 }
