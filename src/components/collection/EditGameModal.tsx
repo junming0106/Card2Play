@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { CollectionItemExtended, CollectionStatus } from "@/types/collection";
 import { useAuth } from "@/components/auth/AuthProvider";
+import DraggableModal from "@/components/ui/DraggableModal";
 
 interface EditGameModalProps {
   game: CollectionItemExtended;
@@ -66,23 +67,13 @@ export default function EditGameModal({
     }
   }, [error]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-[9999] overflow-y-auto">
-      <div className="bg-white border-4 sm:border-8 border-black shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] max-w-md w-full my-4 transform -rotate-1">
-        <div className="p-6">
-          {/* 標題 */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black">編輯遊戲</h2>
-            <button
-              onClick={onClose}
-              className="bg-red-500 text-white w-8 h-8 border-4 border-black font-black hover:bg-red-600 transition-colors"
-              disabled={loading}
-            >
-              ✕
-            </button>
-          </div>
+    <DraggableModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="🎮 編輯遊戲"
+      maxWidth="max-w-md"
+    >
 
           {/* 遊戲資訊 */}
           <div className="bg-gray-100 border-4 border-gray-400 p-4 mb-6 transform rotate-1">
@@ -201,8 +192,6 @@ export default function EditGameModal({
               </button>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
+    </DraggableModal>
   );
 }

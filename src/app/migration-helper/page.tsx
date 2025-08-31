@@ -2,13 +2,24 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import DeleteConfirmModal from "@/components/ui/DeleteConfirmModal";
 
 export default function MigrationHelperPage() {
   const { user, loading } = useAuth();
   const [result, setResult] = useState('');
+  const [showClearModal, setShowClearModal] = useState(false);
 
-  const clearFirestoreCustomGames = async () => {
-    if (!user || !confirm('這將清除所有 Firestore 中的自定義遊戲，確定要繼續嗎？')) return;
+  const openClearModal = () => {
+    if (!user) return;
+    setShowClearModal(true);
+  };
+
+  const closeClearModal = () => {
+    setShowClearModal(false);
+  };
+
+  const handleClearConfirm = async () => {
+    if (!user) return;
 
     try {
       setResult('🔄 清除中...');
@@ -74,7 +85,7 @@ export default function MigrationHelperPage() {
 
           <div className="space-y-4">
             <button
-              onClick={clearFirestoreCustomGames}
+              onClick={openClearModal}
               disabled={!user}
               className="w-full bg-blue-500 text-white border-2 border-black px-6 py-3 font-black hover:bg-blue-600 disabled:opacity-50"
             >
@@ -106,6 +117,16 @@ export default function MigrationHelperPage() {
             <p>✨ 建議先測試新功能，確認正常後再清除舊資料</p>
           </div>
         </div>
+
+        {/* 清除確認 Modal */}
+        <DeleteConfirmModal
+          isOpen={showClearModal}
+          onClose={closeClearModal}
+          onConfirm={handleClearConfirm}
+          title="確認清除 Firestore 資料"
+          message="這將清除所有 Firestore 中的自定義遊戲資料，此動作無法復原。確定要繼續嗎？"
+          itemName="所有舊版 Firestore 自定義遊戲"
+        />
       </div>
     </div>
   );

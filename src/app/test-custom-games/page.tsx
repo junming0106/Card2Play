@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import DeleteConfirmModal from "@/components/ui/DeleteConfirmModal";
 
 export default function TestCustomGamesPage() {
   const { user, loading } = useAuth();
@@ -9,6 +10,7 @@ export default function TestCustomGamesPage() {
   const [gameTitle, setGameTitle] = useState('');
   const [gamePublisher, setGamePublisher] = useState('');
   const [testResult, setTestResult] = useState('');
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, gameId?: number, gameName?: string}>({isOpen: false});
 
   const fetchCustomGames = async () => {
     if (!user) return;
@@ -73,12 +75,20 @@ export default function TestCustomGamesPage() {
     }
   };
 
-  const deleteCustomGame = async (gameId: number, title: string) => {
-    if (!user || !confirm(`確定要刪除「${title}」嗎？`)) return;
+  const openDeleteModal = (gameId: number, title: string) => {
+    setDeleteModal({ isOpen: true, gameId, gameName: title });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!user || !deleteModal.gameId) return;
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/custom-games-pg?gameId=${gameId}`, {
+      const response = await fetch(`/api/custom-games-pg?gameId=${deleteModal.gameId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -88,14 +98,14 @@ export default function TestCustomGamesPage() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(`✅ 成功刪除「${title}」`);
+        setTestResult(`✅ 成功刪除「${deleteModal.gameName}」`);
         fetchCustomGames(); // 重新載入列表
       } else {
-        alert(`❌ 刪除失敗: ${result.error}`);
+        setTestResult(`❌ 刪除失敗: ${result.error}`);
       }
 
     } catch (error) {
-      alert(`💥 刪除錯誤: ${error}`);
+      setTestResult(`💥 刪除錯誤: ${error}`);
     }
   };
 
@@ -216,7 +226,7 @@ export default function TestCustomGamesPage() {
                         </div>
                         
                         <button
-                          onClick={() => deleteCustomGame(game.id, game.title)}
+                          onClick={() => openDeleteModal(game.id, game.title)}
                           className="bg-red-500 text-white border-2 border-black px-3 py-1 font-black hover:bg-red-600"
                         >
                           🗑️ 刪除
@@ -241,6 +251,16 @@ export default function TestCustomGamesPage() {
             </div>
           </>
         )}
+
+        {/* 刪除確認 Modal */}
+        <DeleteConfirmModal
+          isOpen={deleteModal.isOpen}
+          onClose={closeDeleteModal}
+          onConfirm={handleDeleteConfirm}
+          title="確認刪除遊戲"
+          message="這個動作無法復原，確定要刪除這個自定義遊戲嗎？"
+          itemName={deleteModal.gameName}
+        />
       </div>
     </div>
   );

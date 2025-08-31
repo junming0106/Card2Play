@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { CollectionStatus } from "@/types/collection";
 import { useAuth } from "@/components/auth/AuthProvider";
+import DraggableModal from "@/components/ui/DraggableModal";
 
 interface AddCustomGameProps {
   onSuccess: () => void;
@@ -91,21 +92,12 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
       </button>
 
       {/* 新增自定義遊戲彈窗 */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-[9999] overflow-y-auto">
-          <div className="bg-white border-4 sm:border-8 border-black shadow-[8px_8px_0px_#000000] sm:shadow-[16px_16px_0px_#000000] max-w-lg w-full my-4 transform -rotate-1">
-            <div className="p-3 sm:p-6">
-              {/* 標題 */}
-              <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-black">手動新增遊戲</h2>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="bg-red-500 text-white w-8 h-8 border-2 sm:border-4 border-black font-black hover:bg-red-600 transition-colors text-sm sm:text-base"
-                  disabled={loading}
-                >
-                  ✕
-                </button>
-              </div>
+      <DraggableModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="🎨 手動新增遊戲"
+        maxWidth="max-w-lg"
+      >
 
               {/* 說明 */}
               <div className="bg-yellow-100 border-2 sm:border-4 border-yellow-400 p-3 sm:p-4 mb-4 sm:mb-6 transform rotate-1">
@@ -235,10 +227,7 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        </div>
-      )}
+      </DraggableModal>
     </>
   );
 }

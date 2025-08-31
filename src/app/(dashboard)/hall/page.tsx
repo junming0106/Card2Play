@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import DraggableModal from "@/components/ui/DraggableModal";
 
 interface MatchResult {
   playerId: number;
@@ -757,38 +758,37 @@ export default function HallPage() {
       </div>
 
       {/* 沒有想要交換遊戲的提醒Modal */}
-      {showNoWantGameModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_#000000] transform -rotate-1 max-w-md w-full">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🎮</div>
-              <h2 className="text-xl font-black text-gray-800 mb-4">
-                找不到可配對的遊戲
-              </h2>
-              <p className="font-bold text-gray-600 mb-6 leading-relaxed">
-                您尚未有「想要交換」標籤的遊戲，
-                <br />
-                請至我的卡片新增想要交換的遊戲。
-              </p>
-              <div className="flex gap-3 justify-center">
-                <Link
-                  href="/collection"
-                  className="bg-blue-500 text-white border-2 border-black px-6 py-2 font-black hover:bg-blue-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
-                  onClick={() => setShowNoWantGameModal(false)}
-                >
-                  🃏 前往我的卡片
-                </Link>
-                <button
-                  onClick={() => setShowNoWantGameModal(false)}
-                  className="bg-gray-500 text-white border-2 border-black px-6 py-2 font-black hover:bg-gray-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
-                >
-                  關閉
-                </button>
-              </div>
-            </div>
+      <DraggableModal
+        isOpen={showNoWantGameModal}
+        onClose={() => setShowNoWantGameModal(false)}
+        title="🎮 找不到可配對的遊戲"
+        maxWidth="max-w-md"
+        showCloseButton={false}
+      >
+        <div className="text-center">
+          <div className="text-6xl mb-4">🎮</div>
+          <p className="font-bold text-gray-600 mb-6 leading-relaxed">
+            您尚未有「想要交換」標籤的遊戲，
+            <br />
+            請至我的卡片新增想要交換的遊戲。
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Link
+              href="/collection"
+              className="bg-blue-500 text-white border-2 border-black px-6 py-2 font-black hover:bg-blue-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
+              onClick={() => setShowNoWantGameModal(false)}
+            >
+              🃏 前往我的卡片
+            </Link>
+            <button
+              onClick={() => setShowNoWantGameModal(false)}
+              className="bg-gray-500 text-white border-2 border-black px-6 py-2 font-black hover:bg-gray-600 transition-colors shadow-[4px_4px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_#000000]"
+            >
+              關閉
+            </button>
           </div>
         </div>
-      )}
+      </DraggableModal>
     </ProtectedRoute>
   );
 }

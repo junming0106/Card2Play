@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { CollectionItemExtended } from "@/types/collection";
 import { useAuth } from "@/components/auth/AuthProvider";
 import EditGameModal from "./EditGameModal";
+import DeleteConfirmModal from "@/components/ui/DeleteConfirmModal";
 
 interface GameListProps {
   collections: CollectionItemExtended[];
@@ -21,6 +22,7 @@ export default function GameList({
     null
   );
   const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, gameId?: string, gameName?: string, isCustomGame?: boolean}>({isOpen: false});
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -48,9 +50,18 @@ export default function GameList({
     }
   };
 
-  const handleDelete = async (gameId: string, isCustomGame: boolean) => {
-    if (!user || !confirm("確定要刪除這個遊戲嗎？")) return;
+  const openDeleteModal = (gameId: string, gameName: string, isCustomGame: boolean) => {
+    setDeleteModal({ isOpen: true, gameId, gameName, isCustomGame });
+  };
 
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!user || !deleteModal.gameId) return;
+
+    const { gameId, gameName, isCustomGame } = deleteModal;
     setDeletingGameId(gameId);
 
     try {
@@ -67,15 +78,13 @@ export default function GameList({
       if (response.ok) {
         const result = await response.json();
         console.log('✅ 遊戲移除成功:', result);
-        alert(`成功${isCustomGame ? '刪除自定義遊戲' : '移除遊戲'}：${gameId}`);
         onUpdate();
       } else {
         const errorResult = await response.json();
         console.error('❌ 遊戲移除失敗:', errorResult);
-        alert(`${isCustomGame ? '刪除' : '移除'}失敗：${errorResult.error || '請稍後再試'}`);
       }
     } catch (error) {
-      alert("網路錯誤，請稍後再試");
+      console.error('💥 刪除錯誤:', error);
     } finally {
       setDeletingGameId(null);
     }
@@ -177,7 +186,7 @@ export default function GameList({
                 編輯
               </button>
               <button
-                onClick={() => handleDelete(item.id, item.isCustomGame)}
+                onClick={() => openDeleteModal(item.id, item.gameTitle, item.isCustomGame)}
                 className="flex-1 bg-red-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-red-500 transition-colors disabled:opacity-50"
                 disabled={deletingGameId === item.id}
               >
@@ -200,6 +209,16 @@ export default function GameList({
           }}
         />
       )}
+
+      {/* 刪除確認 Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteConfirm}
+        title={deleteModal.isCustomGame ? "確認刪除自定義遊戲" : "確認移除遊戲"}
+        message={deleteModal.isCustomGame ? "這個動作無法復原，確定要刪除這個自定義遊戲嗎？" : "確定要從收藏中移除這個遊戲嗎？"}
+        itemName={deleteModal.gameName}
+      />
     </>
   );
 }
