@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import DraggableModal from "@/components/ui/DraggableModal";
+import DeleteConfirmModal from "@/components/ui/DeleteConfirmModal";
 
 interface MatchResult {
   playerId: number;
@@ -45,6 +46,15 @@ export default function HallPage() {
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [showNoWantGameModal, setShowNoWantGameModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    sessionId?: number;
+    gameName?: string;
+    gameId?: number;
+  }>({ isOpen: false });
+  const [deletingSessionId, setDeletingSessionId] = useState<number | null>(
+    null
+  );
 
   // 初始載入用戶配對狀態
   React.useEffect(() => {
@@ -317,7 +327,7 @@ export default function HallPage() {
 
   // 創建配對成功記錄
   const createMatchRecord = async (match: MatchResult) => {
-    if (!user) return;
+    if (!user) return null;
 
     try {
       console.log("🎯 創建配對成功記錄:", match);
@@ -341,17 +351,150 @@ export default function HallPage() {
       if (response.ok) {
         const result = await response.json();
         console.log("✅ 配對記錄創建成功:", result);
-        
-        // 創建配對記錄後，重新獲取配對狀態以顯示所有歷史記錄
-        await fetchMatchingStatus();
-        
-        return result.data.matchSession;
+        const createdSession = result.data.matchSession;
+
+        // 立即更新當前 match 物件的 sessionId
+        if (matchingStatus) {
+          const updatedMatches = matchingStatus.matches.map((m) =>
+            m.playerId === match.playerId && m.gameId === match.gameId
+              ? { ...m, sessionId: createdSession.id }
+              : m
+          );
+
+          setMatchingStatus({
+            ...matchingStatus,
+            matches: updatedMatches,
+          });
+        }
+
+        // 也重新獲取最新狀態以更新歷史記錄
+        setTimeout(async () => {
+          await fetchMatchingStatus();
+        }, 100);
+
+        return createdSession;
       } else {
         const result = await response.json();
         console.log("❌ 配對記錄創建失敗:", result);
+        return null;
       }
     } catch (error) {
       console.error("💥 創建配對記錄錯誤:", error);
+      return null;
+    }
+  };
+
+  // 關閉刪除 Modal
+  const closeDeleteModal = () => {
+    console.log("🚪 關閉刪除 Modal");
+    setDeleteModal({ isOpen: false });
+  };
+
+  // 刪除配對歷史記錄項目
+  const deleteMatchHistory = async (playerId: number, gameId: number) => {
+    if (!user || !playerId || !gameId) {
+      console.error("❌ 無效的用戶或參數");
+      return false;
+    }
+
+    setDeletingSessionId(playerId); // 使用 playerId 作為loading標識
+
+    try {
+      console.log("🗑️ 開始刪除配對歷史記錄:", { playerId, gameId });
+
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/match-history", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          playerId,
+          gameId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log("✅ 配對歷史記錄刪除成功:", result);
+
+        // 立即更新介面，移除已刪除的項目
+        if (matchingStatus) {
+          const updatedMatches = matchingStatus.matches.filter(
+            (match) => !(match.playerId === playerId && match.gameId === gameId)
+          );
+          const updatedRecentMatches =
+            matchingStatus.recentMatches?.filter(
+              (match) =>
+                !(match.playerId === playerId && match.gameId === gameId)
+            ) || null;
+
+          setMatchingStatus({
+            ...matchingStatus,
+            matches: updatedMatches,
+            recentMatches: updatedRecentMatches,
+          });
+        }
+
+        // 同時也重新獲取最新狀態以確保數據一致性
+        setTimeout(async () => {
+          await fetchMatchingStatus();
+        }, 100);
+
+        return true;
+      } else {
+        console.error("❌ 刪除配對歷史記錄失敗:", result);
+        alert(`刪除失敗：${result.error || "請稍後再試"}`);
+        return false;
+      }
+    } catch (error) {
+      console.error("💥 刪除配對歷史記錄錯誤:", error);
+      alert("網路錯誤，請稍後再試");
+      return false;
+    } finally {
+      setDeletingSessionId(null);
+    }
+  };
+
+  // 打開刪除確認 Modal（統一使用歷史記錄刪除）
+  const openDeleteModal = (
+    playerId: number | undefined,
+    gameName: string,
+    gameId: number
+  ) => {
+    if (!playerId || !gameId) {
+      console.error("❌ 無效的刪除參數:", { playerId, gameId });
+      alert("無法刪除：參數錯誤");
+      return;
+    }
+
+    console.log("🗑️ 打開歷史記錄刪除 Modal:", { playerId, gameId, gameName });
+    setDeleteModal({
+      isOpen: true,
+      sessionId: playerId, // 使用 playerId 作為標識符
+      gameName,
+      gameId,
+    });
+  };
+
+  // 處理刪除確認（統一使用歷史記錄刪除）
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.sessionId || !deleteModal.gameId) {
+      console.error("❌ 無效的 Modal 狀態");
+      return;
+    }
+
+    const success = await deleteMatchHistory(
+      deleteModal.sessionId,
+      deleteModal.gameId
+    );
+    if (success) {
+      console.log("✅ 歷史記錄刪除成功，關閉 Modal");
+      closeDeleteModal();
+    } else {
+      console.log("❌ 歷史記錄刪除失敗，保持 Modal 開啟");
     }
   };
 
@@ -457,11 +600,9 @@ export default function HallPage() {
           {matchingStatus && matchingStatus.matches.length > 0 ? (
             <div className="bg-white border-4 sm:border-8 border-black p-4 sm:p-6 shadow-[8px_8px_0px_#000000] transform rotate-1">
               <h2 className="text-xl sm:text-2xl font-black mb-4 text-center">
-                {matchingStatus.rateLimited ? (
-                  "🎮 之前配對結果"
-                ) : (
-                  `🎮 找到 ${matchingStatus.matches.length} 個配對！`
-                )}
+                {matchingStatus.rateLimited
+                  ? "🎮 之前配對結果"
+                  : `🎮 找到 ${matchingStatus.matches.length} 個配對！`}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {matchingStatus.matches.map((match, index) => (
@@ -525,48 +666,25 @@ export default function HallPage() {
                         }
                         className="flex-1 bg-blue-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-blue-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
                       >
-                        📧 聯繫
+                        📧 發送交換邀請
                       </button>
 
-                      {match.sessionId ? (
-                        // 如果已經發起交換，顯示不同的按鈕
-                        <button
-                          onClick={() => {
-                            const message = `您好！我們之前已經配對成功「${match.gameTitle}」這款遊戲，想確認一下交換進度。`;
-                            window.open(
-                              `mailto:${
-                                match.playerEmail
-                              }?subject=遊戲交換進度確認：${
-                                match.gameTitle
-                              }&body=${encodeURIComponent(message)}`
-                            );
-                          }}
-                          className="flex-1 bg-yellow-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-yellow-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
-                        >
-                          📞 追蹤
-                        </button>
-                      ) : (
-                        // 新配對結果，可以發起交換
-                        <button
-                          onClick={async () => {
-                            // 創建配對成功記錄（只記錄在想要用戶下）
-                            await createMatchRecord(match);
-
-                            // 打開 email 聯繫對方
-                            const message = `您好！我想要交換「${match.gameTitle}」這款遊戲，請問您有興趣嗎？我們可以討論交換的細節。`;
-                            window.open(
-                              `mailto:${
-                                match.playerEmail
-                              }?subject=遊戲交換提議：${
-                                match.gameTitle
-                              }&body=${encodeURIComponent(message)}`
-                            );
-                          }}
-                          className="flex-1 bg-green-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-green-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
-                        >
-                          🔄 交換
-                        </button>
-                      )}
+                      {/* 刪除按鈕 - 統一使用歷史記錄刪除方式 */}
+                      <button
+                        onClick={() =>
+                          openDeleteModal(
+                            match.playerId,
+                            match.gameTitle,
+                            match.gameId
+                          )
+                        }
+                        className="flex-1 bg-red-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-red-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50"
+                        disabled={deletingSessionId === match.playerId}
+                      >
+                        {deletingSessionId === match.playerId
+                          ? "刪除中..."
+                          : "❌ 刪除"}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -667,7 +785,7 @@ export default function HallPage() {
                             }
                             className="flex-1 bg-blue-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-blue-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
                           >
-                            📧 聯繫
+                            📧 發送交換邀請
                           </button>
 
                           {match.sessionId ? (
@@ -688,39 +806,48 @@ export default function HallPage() {
                               📞 追蹤
                             </button>
                           ) : match.isHistoryRecord ? (
-                            // 配對歷史記錄 - 重新交換按鈕
+                            // 配對歷史記錄 - 刪除按鈕
                             <button
-                              onClick={async () => {
-                                // 創建配對成功記錄
-                                await createMatchRecord(match);
-
-                                const message = `您好！我們之前曾經配對過「${match.gameTitle}」這款遊戲，想重新討論交換的可能性。`;
-                                window.open(
-                                  `mailto:${
-                                    match.playerEmail
-                                  }?subject=重新交換提議：${
-                                    match.gameTitle
-                                  }&body=${encodeURIComponent(message)}`
-                                );
-                              }}
-                              className="flex-1 bg-orange-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-orange-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                              onClick={() =>
+                                openDeleteModal(
+                                  match.playerId,
+                                  match.gameTitle,
+                                  match.gameId
+                                )
+                              }
+                              className="flex-1 bg-red-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-red-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50"
+                              disabled={deletingSessionId === match.playerId}
                             >
-                              🔄 重新交換
+                              {deletingSessionId === match.playerId
+                                ? "刪除中..."
+                                : "❌ 刪除"}
                             </button>
                           ) : (
                             // 新配對結果 - 交換按鈕
                             <button
                               onClick={async () => {
-                                await createMatchRecord(match);
-
-                                const message = `您好！我想要交換「${match.gameTitle}」這款遊戲，請問您有興趣嗎？我們可以討論交換的細節。`;
-                                window.open(
-                                  `mailto:${
-                                    match.playerEmail
-                                  }?subject=遊戲交換提議：${
-                                    match.gameTitle
-                                  }&body=${encodeURIComponent(message)}`
+                                console.log("🔄 點擊交換按鈕:", match);
+                                const createdSession = await createMatchRecord(
+                                  match
                                 );
+
+                                if (createdSession) {
+                                  console.log(
+                                    "✅ 配對記錄創建成功，sessionId:",
+                                    createdSession.id
+                                  );
+                                  const message = `您好！我想要交換「${match.gameTitle}」這款遊戲，請問您有興趣嗎？我們可以討論交換的細節。`;
+                                  window.open(
+                                    `mailto:${
+                                      match.playerEmail
+                                    }?subject=遊戲交換提議：${
+                                      match.gameTitle
+                                    }&body=${encodeURIComponent(message)}`
+                                  );
+                                } else {
+                                  console.error("❌ 配對記錄創建失敗");
+                                  alert("創建配對記錄失敗，請稍後再試");
+                                }
                               }}
                               className="flex-1 bg-green-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-green-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
                             >
@@ -789,6 +916,16 @@ export default function HallPage() {
           </div>
         </div>
       </DraggableModal>
+
+      {/* 刪除配對記錄確認 Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteConfirm}
+        title="確認刪除配對記錄"
+        message="刪除後，此配對記錄將不會出現在配對歷史中。這個動作無法復原。"
+        itemName={deleteModal.gameName}
+      />
     </ProtectedRoute>
   );
 }

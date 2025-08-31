@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { findGameMatches, findReversematches, canUserMatch, recordMatchingAttempt, sql } from '@/lib/database'
+import { findGameMatches, canUserMatch, recordMatchingAttempt, sql } from '@/lib/database'
 import { verifyAuthTokenAndGetUser, createSuccessResponse, createErrorResponse } from '@/lib/utils/api'
 
 interface MatchResult {
@@ -10,6 +10,8 @@ interface MatchResult {
   gameId: number;
   matchType: 'seeking' | 'offering'; // seeking: 我想要的遊戲有人持有, offering: 我持有的遊戲有人想要
   addedAt: string;
+  sessionId?: number;
+  isHistoryRecord?: boolean;
 }
 
 // GET /api/matching-pg - 使用 PostgreSQL 的超高效配對
@@ -184,38 +186,23 @@ export async function GET(request: NextRequest) {
     })
 
     // 核心配對邏輯：
-    // 1. 找到我「想要交換」的遊戲，有其他用戶「持有」
-    const seekingMatches = await findGameMatches(user.id, 3)
-    
-    // 2. 找到我「持有」的遊戲，有其他用戶「想要交換」  
-    const offeringMatches = await findReversematches(user.id, 3)
+    // 只找到我「想要交換」的遊戲，有其他用戶「持有」的情況
+    const seekingMatches = await findGameMatches(user.id, 10) // 增加搜尋數量到10個
     
     console.log('🎯 配對完成:', {
-      seeking: seekingMatches.length,
-      offering: offeringMatches.length
+      seeking: seekingMatches.length
     })
 
-    // 轉換為統一格式
-    const allMatches: MatchResult[] = [
-      ...seekingMatches.map(match => ({
-        playerId: match.holder_id,
-        playerEmail: match.holder_email,
-        playerName: match.holder_name,
-        gameTitle: match.game_title,
-        gameId: match.game_id,
-        matchType: 'seeking' as const,
-        addedAt: match.holder_added_at
-      })),
-      ...offeringMatches.map(match => ({
-        playerId: match.seeker_id,
-        playerEmail: match.seeker_email,
-        playerName: match.seeker_name,
-        gameTitle: match.game_title,
-        gameId: match.game_id,
-        matchType: 'offering' as const,
-        addedAt: match.seeker_added_at
-      }))
-    ]
+    // 轉換為統一格式 - 只包含想要交換的遊戲
+    const allMatches: MatchResult[] = seekingMatches.map(match => ({
+      playerId: match.holder_id,
+      playerEmail: match.holder_email,
+      playerName: match.holder_name,
+      gameTitle: match.game_title,
+      gameId: match.game_id,
+      matchType: 'seeking' as const,
+      addedAt: match.holder_added_at
+    }))
 
     // 📝 記錄這次配對嘗試
     const updatedSession = await recordMatchingAttempt(user.id, allMatches)
@@ -230,8 +217,8 @@ export async function GET(request: NextRequest) {
       recentMatches: allMatches, // 當前配對結果就是最新的配對記錄
       summary: {
         total: allMatches.length,
-        seeking: seekingMatches.length,
-        offering: offeringMatches.length
+        seeking: allMatches.length,
+        offering: 0
       },
       user: {
         id: user.id,
