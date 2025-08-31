@@ -1,52 +1,118 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/components/auth/AuthProvider";
 
-// 暫時的通知資料類型（未來可以從 API 取得）
+// 通知資料類型（從 API 獲取）
 interface Notification {
-  id: string;
+  id: number;
   type: 'trade_request' | 'trade_accepted' | 'trade_declined' | 'system';
-  title: string;
+  target_user_id: number;
+  from_user_id: number;
+  from_user_name: string;
+  from_user_email: string;
+  game_id?: number;
+  game_title?: string;
   message: string;
-  fromUser?: string;
-  gameTitle?: string;
-  timestamp: string;
-  isRead: boolean;
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export default function NotificationsPage() {
-  const [notifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'trade_request',
-      title: '交換請求',
-      message: '有人想要與你交換「薩爾達傳說 曠野之息」',
-      fromUser: 'test@example.com',
-      gameTitle: '薩爾達傳說 曠野之息',
-      timestamp: '2025-08-28T10:30:00Z',
-      isRead: false
-    },
-    {
-      id: '2',
-      type: 'trade_accepted',
-      title: '交換成功',
-      message: '你的交換請求已被接受！',
-      fromUser: 'user@test.com',
-      gameTitle: '超級瑪利歐 奧德賽',
-      timestamp: '2025-08-27T15:20:00Z',
-      isRead: true
-    },
-    {
-      id: '3',
-      type: 'system',
-      title: '系統通知',
-      message: '歡迎使用 CARD2PLAY 交換平台！',
-      timestamp: '2025-08-26T09:00:00Z',
-      isRead: true
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // 載入通知數據
+  useEffect(() => {
+    if (user && user.emailVerified) {
+      fetchNotifications();
     }
-  ]);
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError("");
+      console.log("📋 開始獲取通知列表...");
+
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/notifications", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ 通知列表獲取成功:", result);
+        setNotifications(result.data.notifications || []);
+      } else {
+        const result = await response.json();
+        console.error("❌ 通知列表獲取失敗:", result);
+        setError(result.error || "獲取通知失敗");
+      }
+    } catch (error) {
+      console.error("💥 獲取通知錯誤:", error);
+      setError("網路錯誤，請稍後再試");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 處理交換請求回應
+  const handleTradeResponse = async (notificationId: number, action: 'accept' | 'decline') => {
+    if (!user) return;
+
+    try {
+      console.log(`${action === 'accept' ? '✅' : '❌'} ${action === 'accept' ? '接受' : '拒絕'}交換請求:`, notificationId);
+
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: action
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log("✅ 交換回應成功:", result);
+        
+        // 顯示成功訊息
+        alert(`✅ ${action === 'accept' ? '已接受交換請求！' : '已拒絕交換請求！'}\n\n${result.message || ''}`);
+
+        // 更新本地通知列表
+        setNotifications(prevNotifications =>
+          prevNotifications.map(notification =>
+            notification.id === notificationId
+              ? { ...notification, is_read: true }
+              : notification
+          )
+        );
+
+      } else {
+        console.error("❌ 交換回應失敗:", result);
+        alert(`❌ 操作失敗：${result.error || "請稍後再試"}`);
+      }
+    } catch (error) {
+      console.error("💥 交換回應錯誤:", error);
+      alert("❌ 網路錯誤，請稍後再試");
+    }
+  };
 
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
@@ -100,7 +166,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <ProtectedRoute>
@@ -135,11 +201,30 @@ export default function NotificationsPage() {
 
           {/* 通知列表 */}
           <div className="space-y-4">
-            {notifications.length > 0 ? (
+            {loading ? (
+              <div className="bg-white border-4 border-black p-8 text-center shadow-[8px_8px_0px_#000000] transform -rotate-1">
+                <h2 className="text-2xl font-black text-gray-600 mb-4">
+                  📋 載入通知中...
+                </h2>
+              </div>
+            ) : error ? (
+              <div className="bg-red-100 border-4 border-red-500 p-8 text-center shadow-[8px_8px_0px_#000000] transform rotate-1">
+                <h2 className="text-2xl font-black text-red-600 mb-4">
+                  ❌ 載入失敗
+                </h2>
+                <p className="font-bold text-red-500 mb-4">{error}</p>
+                <button
+                  onClick={fetchNotifications}
+                  className="bg-red-500 text-white border-2 border-black px-4 py-2 font-bold text-sm hover:bg-red-600 transition-colors"
+                >
+                  重新載入
+                </button>
+              </div>
+            ) : notifications.length > 0 ? (
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`border-4 border-black p-4 shadow-[4px_4px_0px_#000000] transform hover:scale-105 transition-transform ${getNotificationColor(notification.type, notification.isRead)}`}
+                  className={`border-4 border-black p-4 shadow-[4px_4px_0px_#000000] transform hover:scale-105 transition-transform ${getNotificationColor(notification.type, notification.is_read)}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3 flex-1">
@@ -149,9 +234,11 @@ export default function NotificationsPage() {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
                           <h3 className="font-black text-lg">
-                            {notification.title}
+                            {notification.type === 'trade_request' ? '交換請求' : 
+                             notification.type === 'trade_accepted' ? '交換成功' :
+                             notification.type === 'trade_declined' ? '交換被拒' : '系統通知'}
                           </h3>
-                          {!notification.isRead && (
+                          {!notification.is_read && (
                             <span className="bg-red-500 text-white px-2 py-1 text-xs font-black border-2 border-black">
                               NEW
                             </span>
@@ -160,30 +247,36 @@ export default function NotificationsPage() {
                         <p className="font-bold text-gray-700 mb-2">
                           {notification.message}
                         </p>
-                        {notification.fromUser && (
+                        {notification.from_user_name && (
                           <p className="text-sm font-bold text-gray-600 mb-1">
-                            👤 來自: {notification.fromUser}
+                            👤 來自: {notification.from_user_name} ({notification.from_user_email})
                           </p>
                         )}
-                        {notification.gameTitle && (
+                        {notification.game_title && (
                           <p className="text-sm font-bold text-gray-600 mb-1">
-                            🎮 遊戲: {notification.gameTitle}
+                            🎮 遊戲: {notification.game_title}
                           </p>
                         )}
                         <p className="text-xs font-bold text-gray-500">
-                          🕐 {formatTimestamp(notification.timestamp)}
+                          🕐 {formatTimestamp(notification.created_at)}
                         </p>
                       </div>
                     </div>
                     
                     {/* 動作按鈕 */}
-                    {notification.type === 'trade_request' && !notification.isRead && (
+                    {notification.type === 'trade_request' && !notification.is_read && (
                       <div className="flex flex-col space-y-2 ml-4">
-                        <button className="bg-green-500 text-white border-2 border-black px-3 py-1 font-bold text-sm hover:bg-green-600 transition-colors">
-                          接受
+                        <button 
+                          onClick={() => handleTradeResponse(notification.id, 'accept')}
+                          className="bg-green-500 text-white border-2 border-black px-3 py-1 font-bold text-sm hover:bg-green-600 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                        >
+                          ✅ 接受
                         </button>
-                        <button className="bg-red-500 text-white border-2 border-black px-3 py-1 font-bold text-sm hover:bg-red-600 transition-colors">
-                          拒絕
+                        <button 
+                          onClick={() => handleTradeResponse(notification.id, 'decline')}
+                          className="bg-red-500 text-white border-2 border-black px-3 py-1 font-bold text-sm hover:bg-red-600 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
+                        >
+                          ❌ 拒絕
                         </button>
                       </div>
                     )}

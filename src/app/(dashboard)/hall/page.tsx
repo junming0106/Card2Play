@@ -498,6 +498,49 @@ export default function HallPage() {
     }
   };
 
+  // 發送交換通知
+  const sendTradeNotification = async (match: MatchResult) => {
+    if (!user) {
+      console.error("❌ 用戶未登入");
+      return false;
+    }
+
+    try {
+      console.log("📧 發送交換通知:", match);
+
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          targetUserId: match.playerId,
+          gameId: match.gameId,
+          gameTitle: match.gameTitle,
+          message: `${user.displayName || user.email} 想要與你交換「${match.gameTitle}」`
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log("✅ 交換通知發送成功:", result);
+        alert(`✅ 交換邀請已發送給 ${match.playerName}！對方會在通知中收到您的邀請。`);
+        return true;
+      } else {
+        console.error("❌ 交換通知發送失敗:", result);
+        alert(`❌ 發送失敗：${result.error || "請稍後再試"}`);
+        return false;
+      }
+    } catch (error) {
+      console.error("💥 發送交換通知錯誤:", error);
+      alert("❌ 網路錯誤，請稍後再試");
+      return false;
+    }
+  };
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-purple-300 flex items-center justify-center px-2 sm:px-4 py-8 sm:py-12">
@@ -659,11 +702,14 @@ export default function HallPage() {
                     {/* 操作按鈕 */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() =>
-                          window.open(
-                            `mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我對您的「${match.gameTitle}」遊戲有興趣，想討論交換的可能性。`
-                          )
-                        }
+                        onClick={async () => {
+                          const success = await sendTradeNotification(match);
+                          if (success) {
+                            console.log("✅ 通知發送成功，可以選擇同時開啟郵件");
+                            // 可選：同時開啟郵件作為備選方式
+                            // window.open(`mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我想要與您交換「${match.gameTitle}」這款遊戲。`);
+                          }
+                        }}
                         className="flex-1 bg-blue-400 border-2 border-black px-3 py-1 font-bold text-sm hover:bg-blue-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
                       >
                         📧 發送交換邀請
@@ -778,11 +824,12 @@ export default function HallPage() {
                         {/* 操作按鈕 */}
                         <div className="flex gap-2">
                           <button
-                            onClick={() =>
-                              window.open(
-                                `mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我對您的「${match.gameTitle}」遊戲有興趣，想討論交換的可能性。`
-                              )
-                            }
+                            onClick={async () => {
+                              const success = await sendTradeNotification(match);
+                              if (success) {
+                                console.log("✅ 歷史記錄區域通知發送成功");
+                              }
+                            }}
                             className="flex-1 bg-blue-400 border-2 border-black px-2 py-1 font-bold text-xs hover:bg-blue-500 transition-colors shadow-[2px_2px_0px_#000000] transform hover:translate-x-0.5 hover:translate-y-0.5"
                           >
                             📧 發送交換邀請
