@@ -360,3 +360,15 @@ export async function setAdminClaim(uid: string, isAdmin: boolean) {
     return { error: error as Error };
   }
 }
+
+// 台北時區日期工具函數
+export function getTaipeiDate(): string {
+  const now = new Date();
+  const taipeiDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+  return taipeiDate.toISOString().split('T')[0];
+}
+
+export function getTaipeiDateTime(): string {
+  const now = new Date();
+  return now.toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).replace(' ', 'T');
+}

@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
     // 添加 added_at 欄位到 user_games 表
     try {
-      await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS added_at TIMESTAMP DEFAULT NOW()`
+      await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS added_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei')`
       console.log('✅ 已添加 added_at 欄位')
     } catch (error) {
       console.log('⚠️ added_at 欄位可能已存在:', (error as Error).message)

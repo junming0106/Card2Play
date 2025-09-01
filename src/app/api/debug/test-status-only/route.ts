@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     })
     
     // 檢查並處理歷史記錄的時效性（複製配對API的邏輯）
-    let displayMatches = []
+    let displayMatches: any[] = []
     let isHistoryValid = false
     let historyExpireTime = null
     let historyRemainingMinutes = 0

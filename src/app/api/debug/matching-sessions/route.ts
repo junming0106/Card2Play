@@ -28,22 +28,22 @@ export async function GET(request: NextRequest) {
         *,
         -- 計算 session 是否已過3小時
         CASE 
-          WHEN session_start < NOW() - INTERVAL '3 hours' THEN true 
+          WHEN session_start < NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '3 hours' THEN true 
           ELSE false 
         END as session_expired,
         -- 計算距離重置還有多少秒
         CASE 
-          WHEN session_start < NOW() - INTERVAL '3 hours' THEN 0
-          ELSE EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - NOW()))::INTEGER
+          WHEN session_start < NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '3 hours' THEN 0
+          ELSE EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - NOW() AT TIME ZONE 'Asia/Taipei'))::INTEGER
         END as seconds_until_reset,
         -- 檢查最後配對記錄是否在60分鐘內
         CASE 
           WHEN last_match_at IS NULL THEN false
-          WHEN last_match_at > NOW() - INTERVAL '1 minute' THEN true
+          WHEN last_match_at > NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '1 minute' THEN true
           ELSE false 
         END as has_recent_matches,
         -- 時間差計算
-        EXTRACT(EPOCH FROM (NOW() - last_match_at))::INTEGER as minutes_since_last_match
+        EXTRACT(EPOCH FROM (NOW() AT TIME ZONE 'Asia/Taipei' - last_match_at))::INTEGER as minutes_since_last_match
       FROM user_matching_sessions 
       WHERE user_id = ${user.id}
     `;
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 // 獲取資料庫當前時間
 async function getCurrentDatabaseTime() {
   try {
-    const result = await sql`SELECT NOW() as db_time`
+    const result = await sql`SELECT NOW() AT TIME ZONE 'Asia/Taipei' as db_time`
     return result.rows[0]?.db_time || null
   } catch (error) {
     return null

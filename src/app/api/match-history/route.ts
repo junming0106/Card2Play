@@ -101,7 +101,7 @@ export async function DELETE(request: NextRequest) {
       SET 
         last_match_games = ${updatedLastMatchGames ? JSON.stringify(updatedLastMatchGames) : null}::jsonb,
         match_history = ${updatedMatchHistory ? JSON.stringify(updatedMatchHistory) : null}::jsonb,
-        updated_at = NOW()
+        updated_at = NOW() AT TIME ZONE 'Asia/Taipei'
       WHERE user_id = ${authResult.user.id}
       RETURNING *
     `;

@@ -47,13 +47,13 @@ export async function GET(request: NextRequest) {
         -- 檢查是否在有效期內
         CASE 
           WHEN s.last_match_at IS NULL THEN 'No Match Yet'
-          WHEN s.last_match_at > NOW() - INTERVAL '1 minute' THEN 'Valid'
+          WHEN s.last_match_at > NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '1 minute' THEN 'Valid'
           ELSE 'Expired'
         END as validity_status,
         -- 計算分鐘數
         CASE 
           WHEN s.last_match_at IS NOT NULL THEN 
-            EXTRACT(EPOCH FROM (NOW() - s.last_match_at))/60
+            EXTRACT(EPOCH FROM (NOW() AT TIME ZONE 'Asia/Taipei' - s.last_match_at))/60
           ELSE NULL
         END as minutes_ago
       FROM user_matching_sessions s
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
         s.last_match_at,
         s.last_match_games::text as match_data_preview,
         JSON_ARRAY_LENGTH(s.last_match_games) as match_count,
-        EXTRACT(EPOCH FROM (NOW() - s.last_match_at))/60 as minutes_ago
+        EXTRACT(EPOCH FROM (NOW() AT TIME ZONE 'Asia/Taipei' - s.last_match_at))/60 as minutes_ago
       FROM user_matching_sessions s
       JOIN users u ON s.user_id = u.id
       WHERE s.last_match_games IS NOT NULL
@@ -104,8 +104,8 @@ export async function GET(request: NextRequest) {
       SELECT 
         COUNT(*) as total_sessions,
         COUNT(CASE WHEN last_match_games IS NOT NULL THEN 1 END) as sessions_with_history,
-        COUNT(CASE WHEN last_match_at > NOW() - INTERVAL '1 minute' THEN 1 END) as recent_matches,
-        COUNT(CASE WHEN last_match_games IS NOT NULL AND last_match_at > NOW() - INTERVAL '1 minute' THEN 1 END) as valid_history_records
+        COUNT(CASE WHEN last_match_at > NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '1 minute' THEN 1 END) as recent_matches,
+        COUNT(CASE WHEN last_match_games IS NOT NULL AND last_match_at > NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '1 minute' THEN 1 END) as valid_history_records
       FROM user_matching_sessions
     `
 
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
       sql_queries: {
         check_your_history: `SELECT * FROM user_matching_sessions WHERE user_id = ${user.id}`,
         check_all_history: "SELECT * FROM user_matching_sessions WHERE last_match_games IS NOT NULL",
-        check_valid_history: "SELECT * FROM user_matching_sessions WHERE last_match_games IS NOT NULL AND last_match_at > NOW() - INTERVAL '1 minute'"
+        check_valid_history: "SELECT * FROM user_matching_sessions WHERE last_match_games IS NOT NULL AND last_match_at > NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '1 minute'"
       }
     }
 

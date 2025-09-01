@@ -47,7 +47,7 @@ export async function GET() {
       SELECT COUNT(*) as expired_count
       FROM user_matching_sessions 
       WHERE last_match_at IS NOT NULL 
-        AND last_match_at < NOW() - INTERVAL '1 minute'
+        AND last_match_at < NOW() AT TIME ZONE 'Asia/Taipei' - INTERVAL '1 minute'
     `
     
     const expiredCount = result.rows[0]?.expired_count || 0

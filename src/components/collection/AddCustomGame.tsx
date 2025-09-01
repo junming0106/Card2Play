@@ -47,7 +47,7 @@ export default function AddCustomGame({ onSuccess, disabled = false }: AddCustom
         body: JSON.stringify({
           customTitle: gameTitle.trim(),
           customPublisher: "自定義",
-          releaseDate: new Date().toISOString().split('T')[0],
+          releaseDate: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).split('T')[0],
         }),
       });
 

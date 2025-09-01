@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 測試資料庫連接...')
     
     // 1. 測試基本連接
-    const basicTest = await sql`SELECT NOW() as current_time, version() as pg_version`
+    const basicTest = await sql`SELECT NOW() AT TIME ZONE 'Asia/Taipei' as current_time, version() as pg_version`
     console.log('✅ 基本連接成功:', basicTest.rows[0])
     
     // 2. 檢查必要的表是否存在

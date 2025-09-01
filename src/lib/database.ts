@@ -1,7 +1,40 @@
-import { sql } from "@vercel/postgres";
-
 // 資料庫連接（自動從環境變數讀取 POSTGRES_URL）
-export { sql } from "@vercel/postgres";
+import { sql as originalSql } from "@vercel/postgres";
+
+// 包裝sql函數，確保所有時間欄位使用台北時區
+let timezoneChecked = false;
+
+export async function sql(strings: TemplateStringsArray, ...values: any[]): Promise<any> {
+  // 第一次執行時顯示時區資訊
+  if (!timezoneChecked) {
+    try {
+      const tzResult = await originalSql`SHOW TIME ZONE`;
+      const timezone = tzResult.rows[0].TimeZone;
+      console.log(`⏰ 資料庫預設時區: ${timezone}`);
+      
+      // 測試 NOW() 和台北時區轉換的結果
+      const timeTest = await originalSql`
+        SELECT 
+          NOW() as utc_time,
+          NOW() AT TIME ZONE 'Asia/Taipei' as taipei_time,
+          CURRENT_TIMESTAMP as current_timestamp
+      `;
+      
+      const testRow = timeTest.rows[0];
+      console.log(`⏰ UTC 時間: ${testRow.utc_time}`);
+      console.log(`⏰ 台北時間: ${testRow.taipei_time}`);
+      
+      timezoneChecked = true;
+    } catch (error) {
+      console.warn(`⚠️ 時區檢查失敗:`, error);
+      timezoneChecked = true;
+    }
+  }
+  
+  // 執行原始查詢
+  return originalSql(strings, ...values);
+}
+
 
 // 資料庫初始化腳本
 export async function initializeDatabase() {
@@ -16,8 +49,8 @@ export async function initializeDatabase() {
         email VARCHAR(255) NOT NULL,
         name VARCHAR(255),
         avatar_url TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
+        updated_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei')
       )
     `;
     console.log("✅ users 表建立完成");
@@ -33,8 +66,8 @@ export async function initializeDatabase() {
         custom_title VARCHAR(500),
         custom_publisher VARCHAR(255),
         is_custom BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
+        updated_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei')
       )
     `;
     console.log("✅ games 表建立完成");
@@ -48,9 +81,9 @@ export async function initializeDatabase() {
         status VARCHAR(20) CHECK (status IN ('owned', 'wanted', '持有中', '想要交換', '已借出')) NOT NULL,
         rating INTEGER CHECK (rating >= 1 AND rating <= 5),
         notes TEXT,
-        added_at TIMESTAMP DEFAULT NOW(),
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
+        added_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
+        created_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
+        updated_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
         UNIQUE(user_id, game_id)
       )
     `;
@@ -60,7 +93,7 @@ export async function initializeDatabase() {
     try {
       await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5)`;
       await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS notes TEXT`;
-      await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS added_at TIMESTAMP DEFAULT NOW()`;
+      await sql`ALTER TABLE user_games ADD COLUMN IF NOT EXISTS added_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei')`;
 
       // 更新 status 欄位約束以支援中文狀態
       await sql`
@@ -81,12 +114,12 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS user_matching_sessions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        session_start TIMESTAMP DEFAULT NOW(),
+        session_start TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
         matches_used INTEGER DEFAULT 0,
-        last_match_at TIMESTAMP,
+        last_match_at TIMESTAMPTZ,
         last_match_games JSON,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
+        created_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
+        updated_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
         UNIQUE(user_id)
       )
     `;
@@ -99,11 +132,11 @@ export async function initializeDatabase() {
         wanter_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         holder_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
-        match_date TIMESTAMP DEFAULT NOW(),
+        match_date TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
         status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled')),
         notes TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
+        updated_at TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei')
       )
     `;
     console.log("✅ user_match_sessions 表建立完成");
@@ -163,13 +196,13 @@ export async function createOrUpdateUser(
 
     const result = await sql`
       INSERT INTO users (google_id, email, name, avatar_url, created_at, updated_at)
-      VALUES (${cleanGoogleId}, ${cleanEmail}, ${cleanName}, ${cleanAvatarUrl}, NOW(), NOW())
+      VALUES (${cleanGoogleId}, ${cleanEmail}, ${cleanName}, ${cleanAvatarUrl}, (NOW() AT TIME ZONE 'Asia/Taipei'), (NOW() AT TIME ZONE 'Asia/Taipei'))
       ON CONFLICT (google_id) 
       DO UPDATE SET 
         email = EXCLUDED.email,
         name = COALESCE(NULLIF(EXCLUDED.name, ''), users.name),
         avatar_url = COALESCE(NULLIF(EXCLUDED.avatar_url, ''), users.avatar_url),
-        updated_at = NOW()
+        updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
       RETURNING *
     `;
 
@@ -403,13 +436,13 @@ export async function addUserGame(
       INSERT INTO user_games (user_id, game_id, status, rating, notes, added_at)
       VALUES (${userId}, ${gameId}, ${status}, ${rating || null}, ${
       notes || null
-    }, NOW())
+    }, (NOW() AT TIME ZONE 'Asia/Taipei'))
       ON CONFLICT (user_id, game_id) 
       DO UPDATE SET 
         status = EXCLUDED.status, 
         rating = EXCLUDED.rating,
         notes = EXCLUDED.notes,
-        updated_at = NOW()
+        updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
       RETURNING *
     `;
     return result.rows[0];
@@ -576,7 +609,7 @@ export async function updateUserGame(
     ) {
       const result = await sql`
         UPDATE user_games 
-        SET status = ${updates.status}, rating = ${updates.rating}, notes = ${updates.notes}, updated_at = NOW()
+        SET status = ${updates.status}, rating = ${updates.rating}, notes = ${updates.notes}, updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
         WHERE user_id = ${userId} AND game_id = ${gameId}
         RETURNING *
       `;
@@ -584,7 +617,7 @@ export async function updateUserGame(
     } else if (updates.status && updates.rating !== undefined) {
       const result = await sql`
         UPDATE user_games 
-        SET status = ${updates.status}, rating = ${updates.rating}, updated_at = NOW()
+        SET status = ${updates.status}, rating = ${updates.rating}, updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
         WHERE user_id = ${userId} AND game_id = ${gameId}
         RETURNING *
       `;
@@ -592,7 +625,7 @@ export async function updateUserGame(
     } else if (updates.status && updates.notes !== undefined) {
       const result = await sql`
         UPDATE user_games 
-        SET status = ${updates.status}, notes = ${updates.notes}, updated_at = NOW()
+        SET status = ${updates.status}, notes = ${updates.notes}, updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
         WHERE user_id = ${userId} AND game_id = ${gameId}
         RETURNING *
       `;
@@ -600,7 +633,7 @@ export async function updateUserGame(
     } else if (updates.status) {
       const result = await sql`
         UPDATE user_games 
-        SET status = ${updates.status}, updated_at = NOW()
+        SET status = ${updates.status}, updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
         WHERE user_id = ${userId} AND game_id = ${gameId}
         RETURNING *
       `;
@@ -608,7 +641,7 @@ export async function updateUserGame(
     } else if (updates.rating !== undefined && updates.notes !== undefined) {
       const result = await sql`
         UPDATE user_games 
-        SET rating = ${updates.rating}, notes = ${updates.notes}, updated_at = NOW()
+        SET rating = ${updates.rating}, notes = ${updates.notes}, updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
         WHERE user_id = ${userId} AND game_id = ${gameId}
         RETURNING *
       `;
@@ -616,7 +649,7 @@ export async function updateUserGame(
     } else if (updates.rating !== undefined) {
       const result = await sql`
         UPDATE user_games 
-        SET rating = ${updates.rating}, updated_at = NOW()
+        SET rating = ${updates.rating}, updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
         WHERE user_id = ${userId} AND game_id = ${gameId}
         RETURNING *
       `;
@@ -624,7 +657,7 @@ export async function updateUserGame(
     } else if (updates.notes !== undefined) {
       const result = await sql`
         UPDATE user_games 
-        SET notes = ${updates.notes}, updated_at = NOW()
+        SET notes = ${updates.notes}, updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
         WHERE user_id = ${userId} AND game_id = ${gameId}
         RETURNING *
       `;
@@ -724,18 +757,18 @@ export async function getUserMatchingSession(userId: number) {
         *,
         -- 計算 session 是否已過3小時
         CASE 
-          WHEN session_start < NOW() - INTERVAL '3 hours' THEN true 
+          WHEN session_start < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '3 hours' THEN true 
           ELSE false 
         END as session_expired,
         -- 計算距離重置還有多少秒
         CASE 
-          WHEN session_start < NOW() - INTERVAL '3 hours' THEN 0
-          ELSE EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - NOW()))::INTEGER
+          WHEN session_start < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '3 hours' THEN 0
+          ELSE EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - (NOW() AT TIME ZONE 'Asia/Taipei')))::INTEGER
         END as seconds_until_reset,
         -- 檢查最後配對記錄是否在60分鐘內
         CASE 
           WHEN last_match_at IS NULL THEN false
-          WHEN last_match_at > NOW() - INTERVAL '1 minute' THEN true
+          WHEN last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute' THEN true
           ELSE false 
         END as has_recent_matches,
         -- 檢查 JSON 資料是否存在
@@ -786,25 +819,25 @@ export async function createOrResetMatchingSession(userId: number) {
     
     const result = await sql`
       INSERT INTO user_matching_sessions (user_id, session_start, matches_used, last_match_at, last_match_games)
-      VALUES (${userId}, NOW(), 0, NULL, NULL)
+      VALUES (${userId}, (NOW() AT TIME ZONE 'Asia/Taipei'), 0, NULL, NULL)
       ON CONFLICT (user_id) 
       DO UPDATE SET 
-        session_start = NOW(),
+        session_start = (NOW() AT TIME ZONE 'Asia/Taipei'),
         matches_used = 0,
         -- 只有在歷史記錄超過60分鐘時才清除，否則保留
         last_match_at = CASE 
           WHEN user_matching_sessions.last_match_at IS NOT NULL 
-            AND user_matching_sessions.last_match_at > NOW() - INTERVAL '1 minute'
+            AND user_matching_sessions.last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
           THEN user_matching_sessions.last_match_at
           ELSE NULL 
         END,
         last_match_games = CASE 
           WHEN user_matching_sessions.last_match_at IS NOT NULL 
-            AND user_matching_sessions.last_match_at > NOW() - INTERVAL '1 minute'
+            AND user_matching_sessions.last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
           THEN user_matching_sessions.last_match_games
           ELSE NULL 
         END,
-        updated_at = NOW()
+        updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
       RETURNING *
     `
     
@@ -831,6 +864,10 @@ export async function recordMatchingAttempt(userId: number, matchResults: any[] 
   try {
     console.log('📝 記錄配對嘗試:', { userId, matchCount: matchResults.length })
     
+    // 獲取台北當前時間
+    const taipeiTimeResult = await sql`SELECT (NOW() AT TIME ZONE 'Asia/Taipei') as taipei_time`;
+    const taipeiTime = taipeiTimeResult.rows[0].taipei_time;
+
     // 轉換配對結果為 JSON 格式，只保留必要資訊
     const matchSummary = matchResults.map(match => ({
       gameId: match.gameId,
@@ -839,7 +876,7 @@ export async function recordMatchingAttempt(userId: number, matchResults: any[] 
       playerName: match.playerName,
       playerEmail: match.playerEmail, // 確保包含 email
       matchType: match.matchType,
-      matchedAt: new Date().toISOString()
+      matchedAt: taipeiTime
     }))
     
     console.log('🔧 準備保存的配對資料:', JSON.stringify(matchSummary, null, 2))
@@ -862,7 +899,7 @@ export async function recordMatchingAttempt(userId: number, matchResults: any[] 
         const existing = existingResult.rows[0];
         
         // 1. 先加載現有的歷史記錄
-        let allHistoryMatches = [];
+        let allHistoryMatches: any[] = [];
         if (existing.match_history) {
           try {
             let existingHistory = existing.match_history;
@@ -905,15 +942,15 @@ export async function recordMatchingAttempt(userId: number, matchResults: any[] 
       UPDATE user_matching_sessions 
       SET 
         matches_used = matches_used + 1,
-        last_match_at = NOW(),
+        last_match_at = (NOW() AT TIME ZONE 'Asia/Taipei'),
         last_match_games = ${matchSummary.length > 0 ? JSON.stringify(matchSummary) : null}::jsonb,
         match_history = ${newMatchHistory.length > 0 ? JSON.stringify(newMatchHistory) : null}::jsonb,
-        updated_at = NOW()
+        updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
       WHERE user_id = ${userId}
       RETURNING 
         *,
         -- 計算距離重置還有多少秒
-        EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - NOW()))::INTEGER as seconds_until_reset
+        EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - (NOW() AT TIME ZONE 'Asia/Taipei')))::INTEGER as seconds_until_reset
     `
     
     if (result.rows.length === 0) {
@@ -961,12 +998,12 @@ export async function getRecentMatchSessions(userId: number) {
       JOIN games g ON ms.game_id = g.id
       JOIN users hu ON ms.holder_user_id = hu.id
       WHERE ms.wanter_user_id = ${userId}
-        AND ms.match_date > NOW() - INTERVAL '1 minute'
+        AND ms.match_date > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
       ORDER BY ms.match_date DESC
       LIMIT 10
     `
     
-    const matchSessions = result.rows.map(row => ({
+    const matchSessions = result.rows.map((row: any) => ({
       playerId: row.holder_id,
       playerEmail: row.holder_email,
       playerName: row.holder_name,
@@ -1107,7 +1144,7 @@ export async function canUserMatch(userId: number) {
     }
     
     // 3. 構建完整的歷史記錄列表（合併所有類型的記錄）
-    let allRecentMatches = []
+    let allRecentMatches: any[] | null = []
     
     // 首先加入 match_history 中的歷史配對記錄
     if (historyMatches && historyMatches.length > 0) {
@@ -1117,8 +1154,8 @@ export async function canUserMatch(userId: number) {
     
     // 然後加入配對成功記錄，但避免重複
     if (matchSessionRecords && matchSessionRecords.length > 0) {
-      const existingGameIds = new Set(allRecentMatches.map(m => `${m.gameId}-${m.playerId}`))
-      const newSessionRecords = matchSessionRecords.filter(m => !existingGameIds.has(`${m.gameId}-${m.playerId}`))
+      const existingGameIds = new Set(allRecentMatches.map((m: any) => `${m.gameId}-${m.playerId}`))
+      const newSessionRecords = matchSessionRecords.filter((m: any) => !existingGameIds.has(`${m.gameId}-${m.playerId}`))
       allRecentMatches = [...allRecentMatches, ...newSessionRecords]
       console.log('🎯 加入配對成功記錄:', newSessionRecords.length, '筆')
     }
@@ -1167,8 +1204,8 @@ export async function cleanExpiredMatchingSessions() {
       SET 
         last_match_at = NULL,
         last_match_games = NULL,
-        updated_at = NOW()
-      WHERE last_match_at < NOW() - INTERVAL '1 minute'
+        updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
+      WHERE last_match_at < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
       RETURNING COUNT(*) as cleaned_count
     `
     
@@ -1216,7 +1253,7 @@ export async function createMatchSession(
         ${wanterUserId}, 
         ${holderUserId}, 
         ${gameId}, 
-        NOW(), 
+        (NOW() AT TIME ZONE 'Asia/Taipei'), 
         'pending', 
         ${notes || null}
       )
@@ -1312,7 +1349,7 @@ export async function updateMatchSessionStatus(
       SET 
         status = ${status},
         notes = ${notes || null},
-        updated_at = NOW()
+        updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
       WHERE id = ${matchSessionId}
       RETURNING *
     `

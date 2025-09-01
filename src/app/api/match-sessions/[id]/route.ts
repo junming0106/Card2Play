@@ -9,10 +9,11 @@ import {
 // GET /api/match-sessions/[id] - 查詢特定配對記錄詳情
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
-    console.log("🔍 查詢特定配對記錄詳情:", params.id);
+    console.log("🔍 查詢特定配對記錄詳情:", resolvedParams.id);
 
     // 身份驗證
     const authResult = await verifyAuthTokenAndGetUser(request);
@@ -20,7 +21,7 @@ export async function GET(
       return createErrorResponse(authResult.error || "未經授權", 401);
     }
 
-    const matchSessionId = parseInt(params.id);
+    const matchSessionId = parseInt(resolvedParams.id);
     if (isNaN(matchSessionId)) {
       return createErrorResponse("無效的配對記錄 ID", 400);
     }
@@ -77,10 +78,11 @@ export async function GET(
 // DELETE /api/match-sessions/[id] - 刪除配對記錄（取消配對）
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
-    console.log("🗑️ 刪除配對記錄:", params.id);
+    console.log("🗑️ 刪除配對記錄:", resolvedParams.id);
 
     // 身份驗證
     const authResult = await verifyAuthTokenAndGetUser(request);
@@ -88,7 +90,7 @@ export async function DELETE(
       return createErrorResponse(authResult.error || "未經授權", 401);
     }
 
-    const matchSessionId = parseInt(params.id);
+    const matchSessionId = parseInt(resolvedParams.id);
     if (isNaN(matchSessionId)) {
       return createErrorResponse("無效的配對記錄 ID", 400);
     }

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createCustomGame, getUserCustomGames, deleteCustomGame } from '@/lib/database'
-import { verifyAuthToken, verifyAuthTokenAndGetUser, createSuccessResponse, createErrorResponse } from '@/lib/utils/api'
+import { verifyAuthToken, verifyAuthTokenAndGetUser, createSuccessResponse, createErrorResponse, getTaipeiDate } from '@/lib/utils/api'
 
 // POST /api/custom-games-pg - 建立自定義遊戲（PostgreSQL 版本）
 export async function POST(request: NextRequest) {
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
           customTitle: body.customTitle,
           customPublisher: body.customPublisher || '未知',
           publisher: body.customPublisher || '未知',
-          releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],
+          releaseDate: body.releaseDate || getTaipeiDate(),
           imageUrl: undefined
         }
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       customTitle: body.customTitle,
       customPublisher: body.customPublisher || '未知',
       publisher: body.customPublisher || '未知',
-      releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],
+      releaseDate: body.releaseDate || getTaipeiDate(),
       imageUrl: undefined
     }
 
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ 找到', customGames.length, '個自定義遊戲')
 
-    const formattedGames = customGames.map(game => ({
+    const formattedGames = customGames.map((game: any) => ({
       id: game.id,
       title: game.title,
       customTitle: game.custom_title,

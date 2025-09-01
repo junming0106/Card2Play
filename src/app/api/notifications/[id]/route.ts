@@ -9,10 +9,11 @@ import {
 // PATCH /api/notifications/[id] - 更新通知狀態（接受/拒絕/已讀）
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
-    console.log("🔄 更新通知狀態:", params.id);
+    console.log("🔄 更新通知狀態:", resolvedParams.id);
 
     // 身份驗證
     const authResult = await verifyAuthTokenAndGetUser(request);
@@ -20,7 +21,7 @@ export async function PATCH(
       return createErrorResponse(authResult.error || "未經授權", 401);
     }
 
-    const notificationId = parseInt(params.id);
+    const notificationId = parseInt(resolvedParams.id);
     if (isNaN(notificationId)) {
       return createErrorResponse("無效的通知 ID", 400);
     }
@@ -30,7 +31,10 @@ export async function PATCH(
 
     // 檢查通知是否存在且用戶有權限操作
     const checkResult = await sql`
-      SELECT * FROM user_notifications
+      SELECT *,
+        created_at AT TIME ZONE 'Asia/Taipei' as created_at_tw,
+        updated_at AT TIME ZONE 'Asia/Taipei' as updated_at_tw
+      FROM user_notifications
       WHERE id = ${notificationId} AND target_user_id = ${authResult.user.id}
     `;
 
@@ -42,7 +46,7 @@ export async function PATCH(
     console.log("📋 找到通知:", notification);
 
     let updateData: any = {
-      updated_at: 'NOW()'
+      updated_at: 'NOW() AT TIME ZONE \'Asia/Taipei\''
     };
     let responseMessage = "";
 
@@ -71,7 +75,9 @@ export async function PATCH(
             type,
             game_id,
             game_title,
-            message
+            message,
+            created_at,
+            updated_at
           ) VALUES (
             ${notification.from_user_id},
             ${authResult.user.id},
@@ -80,7 +86,9 @@ export async function PATCH(
             'trade_accepted',
             ${notification.game_id},
             ${notification.game_title},
-            ${'你的交換請求已被' + authResult.user.name + '接受！'}
+            ${'你的交換請求已被' + authResult.user.name + '接受！'},
+            NOW() AT TIME ZONE 'Asia/Taipei',
+            NOW() AT TIME ZONE 'Asia/Taipei'
           )
         `;
         console.log("✅ 已發送接受通知給原始發送者");
@@ -111,7 +119,9 @@ export async function PATCH(
             type,
             game_id,
             game_title,
-            message
+            message,
+            created_at,
+            updated_at
           ) VALUES (
             ${notification.from_user_id},
             ${authResult.user.id},
@@ -120,7 +130,9 @@ export async function PATCH(
             'trade_declined',
             ${notification.game_id},
             ${notification.game_title},
-            ${'你的交換請求被' + authResult.user.name + '拒絕了'}
+            ${'你的交換請求被' + authResult.user.name + '拒絕了'},
+            NOW() AT TIME ZONE 'Asia/Taipei',
+            NOW() AT TIME ZONE 'Asia/Taipei'
           )
         `;
         console.log("📤 已發送拒絕通知給原始發送者");
@@ -142,9 +154,11 @@ export async function PATCH(
       UPDATE user_notifications 
       SET 
         is_read = ${updateData.is_read !== undefined ? updateData.is_read : notification.is_read},
-        updated_at = NOW()
+        updated_at = NOW() AT TIME ZONE 'Asia/Taipei'
       WHERE id = ${notificationId}
-      RETURNING *
+      RETURNING *,
+        created_at AT TIME ZONE 'Asia/Taipei' as created_at_tw,
+        updated_at AT TIME ZONE 'Asia/Taipei' as updated_at_tw
     `;
 
     const updatedNotification = result.rows[0];
@@ -166,10 +180,11 @@ export async function PATCH(
 // DELETE /api/notifications/[id] - 刪除通知
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
-    console.log("🗑️ 刪除通知:", params.id);
+    console.log("🗑️ 刪除通知:", resolvedParams.id);
 
     // 身份驗證
     const authResult = await verifyAuthTokenAndGetUser(request);
@@ -177,7 +192,7 @@ export async function DELETE(
       return createErrorResponse(authResult.error || "未經授權", 401);
     }
 
-    const notificationId = parseInt(params.id);
+    const notificationId = parseInt(resolvedParams.id);
     if (isNaN(notificationId)) {
       return createErrorResponse("無效的通知 ID", 400);
     }

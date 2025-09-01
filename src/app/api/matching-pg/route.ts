@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
     })
 
     // 轉換為統一格式 - 只包含想要交換的遊戲
-    const allMatches: MatchResult[] = seekingMatches.map(match => ({
+    const allMatches: MatchResult[] = seekingMatches.map((match: any) => ({
       playerId: match.holder_id,
       playerEmail: match.holder_email,
       playerName: match.holder_name,

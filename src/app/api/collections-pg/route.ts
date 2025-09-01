@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     console.log('📊 找到', userGames.length, '個收藏項目')
 
     // 格式化回應資料
-    const collections = userGames.map(game => ({
+    const collections = userGames.map((game: any) => ({
       id: game.game_id.toString(),
       gameId: game.game_id.toString(),
       gameTitle: game.custom_title || game.title,

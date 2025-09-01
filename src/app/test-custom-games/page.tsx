@@ -55,7 +55,7 @@ export default function TestCustomGamesPage() {
         body: JSON.stringify({
           customTitle: gameTitle.trim(),
           customPublisher: gamePublisher.trim() || '未知',
-          releaseDate: new Date().toISOString().split('T')[0]
+          releaseDate: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).split('T')[0]
         }),
       });
 

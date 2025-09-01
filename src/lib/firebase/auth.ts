@@ -137,8 +137,8 @@ const createUserProfileAsync = async (user: User) => {
         email: user.email || '',
         displayName: user.displayName || '',
         photoURL: user.photoURL,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' })),
+        updatedAt: new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' })),
       }
 
       await setDoc(doc(db, 'users', user.uid), userProfile)

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     console.log("🎯 配對完成，找到", matches.length, "個結果");
 
     // 轉換為前端期望的格式
-    const formattedMatches: MatchResult[] = matches.map((match) => ({
+    const formattedMatches: MatchResult[] = matches.map((match: any) => ({
       playerId: match.holder_id.toString(),
       playerEmail: match.holder_email,
       playerName: match.holder_name,
