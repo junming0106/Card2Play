@@ -521,6 +521,96 @@ export async function getUserCustomGames(userId: number) {
   }
 }
 
+// 更新自定義遊戲資訊
+export async function updateCustomGame(
+  userId: number, 
+  gameId: number, 
+  gameData: {
+    customTitle?: string;
+    customPublisher?: string;
+    releaseDate?: string;
+    imageUrl?: string;
+  }
+) {
+  try {
+    // 首先檢查遊戲是否為自定義遊戲且屬於該用戶
+    const gameCheck = await sql`
+      SELECT g.* FROM games g
+      JOIN user_games ug ON g.id = ug.game_id
+      WHERE g.id = ${gameId} AND g.is_custom = true AND ug.user_id = ${userId}
+    `;
+
+    if (gameCheck.rows.length === 0) {
+      throw new Error("找不到指定的自定義遊戲或無權限編輯");
+    }
+
+    // 建立更新查詢，只更新提供的欄位
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (gameData.customTitle !== undefined) {
+      updates.push(`custom_title = $${paramIndex}`);
+      updates.push(`title = $${paramIndex}`); // 同時更新 title
+      values.push(gameData.customTitle);
+      paramIndex++;
+    }
+
+    if (gameData.customPublisher !== undefined) {
+      updates.push(`custom_publisher = $${paramIndex}`);
+      updates.push(`publisher = $${paramIndex}`); // 同時更新 publisher
+      values.push(gameData.customPublisher);
+      paramIndex++;
+    }
+
+    if (gameData.releaseDate !== undefined) {
+      updates.push(`release_date = $${paramIndex}`);
+      values.push(gameData.releaseDate || null);
+      paramIndex++;
+    }
+
+    if (gameData.imageUrl !== undefined) {
+      updates.push(`image_url = $${paramIndex}`);
+      values.push(gameData.imageUrl || null);
+      paramIndex++;
+    }
+
+    if (updates.length === 0) {
+      throw new Error("沒有提供有效的更新欄位");
+    }
+
+    // 添加 updated_at
+    updates.push(`updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')`);
+    values.push(gameId); // WHERE 條件的參數
+
+    const updateQuery = `
+      UPDATE games 
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex} AND is_custom = true
+      RETURNING *
+    `;
+
+    console.log('🔄 執行遊戲更新查詢:', updateQuery);
+    console.log('🔄 更新參數:', values);
+
+    // 使用原生 SQL 執行更新
+    const { sql: rawSql } = await import('@vercel/postgres');
+    const result = await rawSql.query(updateQuery, values);
+
+    if (result.rows.length === 0) {
+      throw new Error("更新失敗，找不到指定的遊戲");
+    }
+
+    const updatedGame = result.rows[0];
+    console.log('✅ 遊戲更新成功:', updatedGame.title);
+
+    return updatedGame;
+  } catch (error) {
+    console.error("❌ 自定義遊戲更新失敗:", error);
+    throw error;
+  }
+}
+
 export async function deleteCustomGame(userId: number, gameId: number) {
   try {
     // 首先檢查遊戲是否為自定義遊戲且屬於該用戶
@@ -765,7 +855,7 @@ export async function getUserMatchingSession(userId: number) {
           WHEN session_start < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '3 hours' THEN 0
           ELSE EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - (NOW() AT TIME ZONE 'Asia/Taipei')))::INTEGER
         END as seconds_until_reset,
-        -- 檢查最後配對記錄是否在60分鐘內
+        -- 檢查最後配對記錄是否在1分鐘內 (用於顯示配對結果)
         CASE 
           WHEN last_match_at IS NULL THEN false
           WHEN last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute' THEN true
@@ -824,7 +914,7 @@ export async function createOrResetMatchingSession(userId: number) {
       DO UPDATE SET 
         session_start = (NOW() AT TIME ZONE 'Asia/Taipei'),
         matches_used = 0,
-        -- 只有在歷史記錄超過60分鐘時才清除，否則保留
+        -- 只有在配對結果超過1分鐘時才清除，歷史記錄另外處理
         last_match_at = CASE 
           WHEN user_matching_sessions.last_match_at IS NOT NULL 
             AND user_matching_sessions.last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
@@ -980,7 +1070,7 @@ export async function getRecentMatchSessions(userId: number) {
   try {
     console.log('🔍 查詢最近的配對成功記錄:', userId)
     
-    // 查詢最近 60 分鐘內的配對成功記錄
+    // 查詢最近 1 分鐘內的配對成功記錄 (用於配對結果顯示)
     const result = await sql`
       SELECT 
         ms.id,
@@ -1107,17 +1197,30 @@ export async function canUserMatch(userId: number) {
           parsed = JSON.parse(session.match_history)
         }
         
-        // 確保每個配對記錄都有正確的格式
-        historyMatches = Array.isArray(parsed) ? parsed.map(match => ({
-          playerId: match.playerId,
-          playerEmail: match.playerEmail || match.playerName || 'unknown@email.com',
-          playerName: match.playerName || 'Unknown Player',
-          gameTitle: match.gameTitle,
-          gameId: match.gameId,
-          matchType: match.matchType,
-          addedAt: match.matchedAt || match.addedAt || new Date().toISOString(),
-          isHistoryRecord: true // 標記為配對歷史記錄
-        })) : []
+        // 確保每個配對記錄都有正確的格式，並過濾掉超過 60 分鐘的記錄
+        const now = new Date()
+        const sixtyMinutesAgo = new Date(now.getTime() - 60 * 60 * 1000) // 60 分鐘前
+        
+        historyMatches = Array.isArray(parsed) ? parsed
+          .map(match => ({
+            playerId: match.playerId,
+            playerEmail: match.playerEmail || match.playerName || 'unknown@email.com',
+            playerName: match.playerName || 'Unknown Player',
+            gameTitle: match.gameTitle,
+            gameId: match.gameId,
+            matchType: match.matchType,
+            addedAt: match.matchedAt || match.addedAt || new Date().toISOString(),
+            isHistoryRecord: true // 標記為配對歷史記錄
+          }))
+          .filter(match => {
+            // 過濾掉超過 60 分鐘的歷史記錄
+            const matchTime = new Date(match.addedAt)
+            const isValid = matchTime >= sixtyMinutesAgo
+            if (!isValid) {
+              console.log('⏰ 過濾掉過期的歷史記錄:', match.gameTitle, match.playerName)
+            }
+            return isValid
+          }) : []
         
         console.log('✅ 成功解析配對歷史記錄:', historyMatches.length, '筆')
       } catch (parseError) {
@@ -1199,20 +1302,38 @@ export async function cleanExpiredMatchingSessions() {
   try {
     console.log('🧹 清理過期配對記錄...')
     
-    const result = await sql`
+    // 清理超過 60 分鐘的配對歷史記錄
+    const historyResult = await sql`
+      UPDATE user_matching_sessions 
+      SET 
+        match_history = NULL,
+        updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
+      WHERE match_history IS NOT NULL 
+        AND updated_at < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '60 minutes'
+      RETURNING id
+    `
+    
+    // 清理超過 1 分鐘的配對結果 (last_match_games)
+    const resultCleanup = await sql`
       UPDATE user_matching_sessions 
       SET 
         last_match_at = NULL,
         last_match_games = NULL,
         updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
       WHERE last_match_at < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
-      RETURNING COUNT(*) as cleaned_count
+      RETURNING id
     `
     
-    const cleanedCount = result.rows[0]?.cleaned_count || 0
-    console.log(`✅ 清理完成，清理了 ${cleanedCount} 筆過期配對記錄`)
+    const historyCleanedCount = historyResult.rows.length
+    const resultCleanedCount = resultCleanup.rows.length
     
-    return { cleanedCount }
+    console.log(`✅ 清理完成，清理了 ${historyCleanedCount} 筆過期配對歷史記錄，${resultCleanedCount} 筆過期配對結果`)
+    
+    return { 
+      historyCleanedCount,
+      resultCleanedCount,
+      totalCleaned: historyCleanedCount + resultCleanedCount
+    }
   } catch (error) {
     console.error('❌ 清理過期配對記錄失敗:', error)
     throw error

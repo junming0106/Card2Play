@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createCustomGame, getUserCustomGames, deleteCustomGame } from '@/lib/database'
+import { createCustomGame, getUserCustomGames, deleteCustomGame, updateCustomGame } from '@/lib/database'
 import { verifyAuthToken, verifyAuthTokenAndGetUser, createSuccessResponse, createErrorResponse, getTaipeiDate } from '@/lib/utils/api'
 
 // POST /api/custom-games-pg - 建立自定義遊戲（PostgreSQL 版本）
@@ -211,13 +211,93 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
+// PUT /api/custom-games-pg - 編輯自定義遊戲
+export async function PUT(request: NextRequest) {
+  try {
+    console.log('✏️ 開始編輯自定義遊戲...')
+    
+    // 驗證身份並取得用戶
+    const authResult = await verifyAuthTokenAndGetUser(request)
+    if (!authResult.user) {
+      console.log('❌ 身份驗證失敗:', authResult.error)
+      return createErrorResponse(authResult.error || '未經授權', 401)
+    }
+
+    const user = authResult.user
+    const { searchParams } = new URL(request.url)
+    const gameIdStr = searchParams.get('gameId')
+    const body = await request.json()
+    
+    console.log('📋 要編輯的遊戲 ID:', gameIdStr)
+    console.log('📝 更新資料:', body)
+    console.log('👤 用戶:', user.email)
+
+    if (!gameIdStr) {
+      console.log('❌ 缺少遊戲 ID 參數')
+      return createErrorResponse('缺少遊戲 ID', 400)
+    }
+
+    // 將 gameId 轉換為數字
+    const gameId = parseInt(gameIdStr)
+    if (isNaN(gameId)) {
+      console.log('❌ 無效的遊戲 ID 格式')
+      return createErrorResponse('無效的遊戲 ID 格式', 400)
+    }
+
+    // 驗證必要欄位（至少需要一個欄位）
+    if (!body.customTitle && !body.customPublisher && !body.releaseDate && !body.imageUrl) {
+      return createErrorResponse('至少需要提供一個更新欄位', 400)
+    }
+
+    // 驗證標題不能為空
+    if (body.customTitle !== undefined && !body.customTitle?.trim()) {
+      return createErrorResponse('遊戲標題不能為空', 400)
+    }
+
+    // 準備更新資料
+    const gameData: any = {}
+    if (body.customTitle !== undefined) gameData.customTitle = body.customTitle.trim()
+    if (body.customPublisher !== undefined) gameData.customPublisher = body.customPublisher?.trim() || '未知'
+    if (body.releaseDate !== undefined) gameData.releaseDate = body.releaseDate
+    if (body.imageUrl !== undefined) gameData.imageUrl = body.imageUrl
+
+    // 更新自定義遊戲
+    const updatedGame = await updateCustomGame(user.id, gameId, gameData)
+    
+    console.log('✅ 自定義遊戲編輯成功:', updatedGame.title)
+
+    return createSuccessResponse({
+      game: {
+        id: updatedGame.id,
+        title: updatedGame.title,
+        customTitle: updatedGame.custom_title,
+        customPublisher: updatedGame.custom_publisher,
+        publisher: updatedGame.publisher,
+        releaseDate: updatedGame.release_date,
+        imageUrl: updatedGame.image_url,
+        isCustom: updatedGame.is_custom,
+        updatedAt: updatedGame.updated_at
+      }
+    }, '自定義遊戲編輯成功')
+
+  } catch (error) {
+    console.error('💥 編輯自定義遊戲錯誤:', error)
+    
+    if (error instanceof Error) {
+      return createErrorResponse(error.message, 404)
+    }
+    
+    return createErrorResponse('編輯自定義遊戲失敗', 500)
+  }
+}
+
 // OPTIONS - 處理 CORS 預檢請求
 export async function OPTIONS() {
   return new Response(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
