@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
         game_title VARCHAR(255),
         message TEXT,
         is_read BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT (NOW()),
-        updated_at TIMESTAMP DEFAULT (NOW())
+        created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei'),
+        updated_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Taipei')
       )
     `;
 
@@ -78,12 +78,10 @@ export async function POST(request: NextRequest) {
         ${gameId},
         ${gameTitle},
         ${message || `${authResult.user.name} 想要與你交換「${gameTitle}」`},
-        NOW(),
-        NOW()
+        NOW() AT TIME ZONE 'Asia/Taipei',
+        NOW() AT TIME ZONE 'Asia/Taipei'
       )
-      RETURNING *, 
-        created_at AT TIME ZONE 'Asia/Taipei' as created_at_tw,
-        updated_at AT TIME ZONE 'Asia/Taipei' as updated_at_tw
+      RETURNING *
     `;
 
     const notification = result.rows[0];
@@ -230,9 +228,7 @@ export async function GET(request: NextRequest) {
     let result;
     if (unreadOnly) {
       result = await sql`
-        SELECT *,
-          created_at AT TIME ZONE 'Asia/Taipei' as created_at_tw,
-          updated_at AT TIME ZONE 'Asia/Taipei' as updated_at_tw
+        SELECT *
         FROM user_notifications 
         WHERE target_user_id = ${authResult.user.id} AND is_read = FALSE
         ORDER BY created_at DESC
@@ -240,9 +236,7 @@ export async function GET(request: NextRequest) {
       `;
     } else {
       result = await sql`
-        SELECT *,
-          created_at AT TIME ZONE 'Asia/Taipei' as created_at_tw,
-          updated_at AT TIME ZONE 'Asia/Taipei' as updated_at_tw
+        SELECT *
         FROM user_notifications 
         WHERE target_user_id = ${authResult.user.id}
         ORDER BY created_at DESC

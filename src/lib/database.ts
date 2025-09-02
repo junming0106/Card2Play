@@ -855,10 +855,10 @@ export async function getUserMatchingSession(userId: number) {
           WHEN session_start < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '3 hours' THEN 0
           ELSE EXTRACT(EPOCH FROM (session_start + INTERVAL '3 hours' - (NOW() AT TIME ZONE 'Asia/Taipei')))::INTEGER
         END as seconds_until_reset,
-        -- 檢查最後配對記錄是否在1分鐘內 (用於顯示配對結果)
+        -- 檢查最後配對記錄是否在1小時內 (用於顯示配對結果)
         CASE 
           WHEN last_match_at IS NULL THEN false
-          WHEN last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute' THEN true
+          WHEN last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 hour' THEN true
           ELSE false 
         END as has_recent_matches,
         -- 檢查 JSON 資料是否存在
@@ -914,16 +914,16 @@ export async function createOrResetMatchingSession(userId: number) {
       DO UPDATE SET 
         session_start = (NOW() AT TIME ZONE 'Asia/Taipei'),
         matches_used = 0,
-        -- 只有在配對結果超過1分鐘時才清除，歷史記錄另外處理
+        -- 只有在配對結果超過1小時時才清除，歷史記錄另外處理
         last_match_at = CASE 
           WHEN user_matching_sessions.last_match_at IS NOT NULL 
-            AND user_matching_sessions.last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
+            AND user_matching_sessions.last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 hour'
           THEN user_matching_sessions.last_match_at
           ELSE NULL 
         END,
         last_match_games = CASE 
           WHEN user_matching_sessions.last_match_at IS NOT NULL 
-            AND user_matching_sessions.last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
+            AND user_matching_sessions.last_match_at > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 hour'
           THEN user_matching_sessions.last_match_games
           ELSE NULL 
         END,
@@ -1088,7 +1088,7 @@ export async function getRecentMatchSessions(userId: number) {
       JOIN games g ON ms.game_id = g.id
       JOIN users hu ON ms.holder_user_id = hu.id
       WHERE ms.wanter_user_id = ${userId}
-        AND ms.match_date > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
+        AND ms.match_date > (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 hour'
       ORDER BY ms.match_date DESC
       LIMIT 10
     `
@@ -1320,7 +1320,7 @@ export async function cleanExpiredMatchingSessions() {
         last_match_at = NULL,
         last_match_games = NULL,
         updated_at = (NOW() AT TIME ZONE 'Asia/Taipei')
-      WHERE last_match_at < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 minute'
+      WHERE last_match_at < (NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 hour'
       RETURNING id
     `
     

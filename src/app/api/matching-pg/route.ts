@@ -76,8 +76,14 @@ export async function GET(request: NextRequest) {
         
         isHistoryValid = true
         displayMatches = matchPermission.recentMatches
-        historyExpireTime = new Date(lastMatchTime.getTime() + 1 * 60 * 1000) // 配對時間 + 1分鐘
+        historyExpireTime = new Date(lastMatchTime.getTime() + 60 * 60 * 1000) // 配對時間 + 1小時
         historyRemainingMinutes = Math.max(0, Math.ceil((historyExpireTime.getTime() - now.getTime()) / (60 * 1000)))
+        
+        // 如果歷史記錄已過期，清空顯示的記錄
+        if (historyRemainingMinutes <= 0) {
+          displayMatches = []
+          isHistoryValid = false
+        }
         
         console.log('✅ 顯示配對結果（當前或歷史）:', {
           lastMatchTime: lastMatchTime.toISOString(),
@@ -119,7 +125,7 @@ export async function GET(request: NextRequest) {
         matchesRemaining: matchPermission.matchesRemaining,
         secondsUntilReset: matchPermission.secondsUntilReset,
         nextResetTime: new Date(Date.now() + (matchPermission.secondsUntilReset * 1000)).toISOString(),
-        recentMatches: matchPermission.allRecentMatches || null, // 使用新的累積歷史記錄
+        recentMatches: (historyRemainingMinutes <= 0) ? null : (matchPermission.allRecentMatches || null), // 過期後清空歷史記錄
         summary: summary,
         // 新增歷史記錄相關信息
         historyInfo: isHistoryValid ? {

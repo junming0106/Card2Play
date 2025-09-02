@@ -519,7 +519,9 @@ export default function HallPage() {
           targetUserId: match.playerId,
           gameId: match.gameId,
           gameTitle: match.gameTitle,
-          message: `${user.displayName || user.email} 想要與你交換「${match.gameTitle}」`
+          message: `${user.displayName || user.email} 想要與你交換「${
+            match.gameTitle
+          }」`,
         }),
       });
 
@@ -527,7 +529,9 @@ export default function HallPage() {
 
       if (response.ok) {
         console.log("✅ 交換通知發送成功:", result);
-        alert(`✅ 交換邀請已發送給 ${match.playerName}！對方會在通知中收到您的邀請。`);
+        alert(
+          `✅ 交換邀請已發送給 ${match.playerName}！對方會在通知中收到您的邀請。`
+        );
         return true;
       } else {
         console.error("❌ 交換通知發送失敗:", result);
@@ -705,7 +709,9 @@ export default function HallPage() {
                         onClick={async () => {
                           const success = await sendTradeNotification(match);
                           if (success) {
-                            console.log("✅ 通知發送成功，可以選擇同時開啟郵件");
+                            console.log(
+                              "✅ 通知發送成功，可以選擇同時開啟郵件"
+                            );
                             // 可選：同時開啟郵件作為備選方式
                             // window.open(`mailto:${match.playerEmail}?subject=遊戲交換：${match.gameTitle}&body=您好，我想要與您交換「${match.gameTitle}」這款遊戲。`);
                           }
@@ -765,7 +771,7 @@ export default function HallPage() {
             matchingStatus.recentMatches.length > 0 && (
               <div className="mt-8 bg-yellow-100 border-4 border-yellow-500 p-4 sm:p-6 transform -rotate-1">
                 <h3 className="text-xl font-black mb-4 text-yellow-800 text-center">
-                  📋 配對歷史紀錄 (60分鐘內)
+                  📋 配對歷史紀錄 (1小時內)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {matchingStatus.recentMatches
@@ -825,7 +831,9 @@ export default function HallPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={async () => {
-                              const success = await sendTradeNotification(match);
+                              const success = await sendTradeNotification(
+                                match
+                              );
                               if (success) {
                                 console.log("✅ 歷史記錄區域通知發送成功");
                               }
@@ -924,7 +932,7 @@ export default function HallPage() {
               <li>系統會尋找持有你「想要交換」遊戲的其他玩家</li>
               <li>每次配對最多顯示 3 個結果</li>
               <li>每 3 小時最多可以配對 3 次</li>
-              <li>最近配對記錄會保存 60 分鐘</li>
+              <li>最近配對記錄會保存 1 小時</li>
               <li>找到配對後可以聯繫對方進行交換</li>
             </ul>
           </div>

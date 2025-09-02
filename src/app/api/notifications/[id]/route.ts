@@ -31,9 +31,7 @@ export async function PATCH(
 
     // 檢查通知是否存在且用戶有權限操作
     const checkResult = await sql`
-      SELECT *,
-        created_at AT TIME ZONE 'Asia/Taipei' as created_at_tw,
-        updated_at AT TIME ZONE 'Asia/Taipei' as updated_at_tw
+      SELECT *
       FROM user_notifications
       WHERE id = ${notificationId} AND target_user_id = ${authResult.user.id}
     `;
@@ -156,9 +154,7 @@ export async function PATCH(
         is_read = ${updateData.is_read !== undefined ? updateData.is_read : notification.is_read},
         updated_at = NOW() AT TIME ZONE 'Asia/Taipei'
       WHERE id = ${notificationId}
-      RETURNING *,
-        created_at AT TIME ZONE 'Asia/Taipei' as created_at_tw,
-        updated_at AT TIME ZONE 'Asia/Taipei' as updated_at_tw
+      RETURNING *
     `;
 
     const updatedNotification = result.rows[0];
